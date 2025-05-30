@@ -1,0 +1,5 @@
+Skill(laser_damage,893,557, 0,True,'')
+Skill(energy_depletion_rate,571,551, 0,True,laser_damage)
+Skill(player_movement_speed,1310,547, 0,True,laser_damage)
+Skill(player_energy,335,390,0,True,energy_depletion_rate)
+Skill(max_lasers,892,370, 0,True,laser_damage)

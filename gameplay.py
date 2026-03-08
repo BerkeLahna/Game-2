@@ -2,71 +2,112 @@ import pygame
 import sys
 import random
 import math
-from skilltree import skill_tree_page
-import globals
 import time
+import globals
+from skilltree import skill_tree_page
 from buttons import *
 from enemy import Enemy
 from enemy_laser import EnemyLaser
 from laser import Laser
 from game_object import GameObject, get_offscreen_spawn_and_direction, meteorite_images
 
+# --- INITIALIZATION ---
+pygame.init()
+pygame.mixer.init()
+
+# --- ASSET LOADING (LOADED ONCE FOR PERFORMANCE) ---
+# Prevents memory leaks by not loading in the main loop
 explosion_images = {
-    1 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion1.png'), (60,60)),
-    2 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion2.png'), (60,60)),
-    3 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion3.png'), (60,60)),
-    4 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion4.png'), (60,60)),
-    5 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion5_scuffed.png'), (60,60)),
-    6 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion6.png'), (60,60)),
-    7 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion7.png'), (60,60))
+    i: pygame.transform.scale(pygame.image.load(f'Images/Explosion/explosion{i if i != 5 else "5_scuffed"}.png'), (60, 60))
+    for i in range(1, 8)
 }
-
-skill_tree_button = create_button("Skill Tree", 810, 490, 300, 75)
-Restart_button = create_button(   "Restart",    810, 560, 300, 75)
-quit_button = create_button(      "Quit",       810, 630, 300, 75)
-continue_button = create_button(  "Continue",   810, 420, 300, 75)
-
-game_over_buttons = [
-    quit_button,
-    Restart_button,
-    skill_tree_button
-]
-
-pause_menu_buttons = [
-    continue_button,
-    Restart_button,
-    quit_button,
-    skill_tree_button
-]
 
 explosion_sound = pygame.mixer.Sound("Images/Explosion/explosion_alternate1.mp3")
 
-obstacles = []
-enemies = []
-
-current_player_rotation_angle = 0
+# UI Elements with Precision Scaling
+try:
+    # --- LOAD PNGs (already set up for dynamic use) ---
+    raw_hp_bar = pygame.image.load(r'Images\hp_bar.png').convert_alpha()
+    raw_energy_bar = pygame.image.load(r'Images\energy_bar.png').convert_alpha()
+    
+    # Scale adjusted to 0.04 as per your requirement
+    ui_scale = 0.04 
+    hp_bar_img = pygame.transform.scale(raw_hp_bar, (int(raw_hp_bar.get_width() * ui_scale), int(raw_hp_bar.get_height() * ui_scale)))
+    energy_bar_img = pygame.transform.scale(raw_energy_bar, (int(raw_energy_bar.get_width() * ui_scale), int(raw_energy_bar.get_height() * ui_scale)))
+except Exception as e:
+    print(f"UI Image error: {e}. Using placeholders.")
+    hp_bar_img = pygame.Surface((100, 20))
+    energy_bar_img = pygame.Surface((100, 20))
 
 background_image = pygame.image.load('Images/menu (1).jpeg')
 background_image = pygame.transform.scale(background_image, (1920, 1080))
 
+# Player Image & Circular Masking
 raw_player_image = pygame.image.load('Images/Ships/ship-2.png').convert_alpha()
 raw_player_image = pygame.transform.scale(raw_player_image, (globals.player_size, globals.player_size))
-original_player_image = pygame.Surface(
-    (globals.player_size, globals.player_size), pygame.SRCALPHA
-)
+original_player_image = pygame.Surface((globals.player_size, globals.player_size), pygame.SRCALPHA)
 original_player_image.blit(raw_player_image, (0, 0))
-temp_mask_surface = pygame.Surface(
-    (globals.player_size, globals.player_size), pygame.SRCALPHA
-)
-pygame.draw.circle(
-    temp_mask_surface, (255, 255, 255, 255),
-    (globals.player_size // 2, globals.player_size // 2),
-    globals.player_size // 2
-)
+
+temp_mask_surface = pygame.Surface((globals.player_size, globals.player_size), pygame.SRCALPHA)
+pygame.draw.circle(temp_mask_surface, (255, 255, 255, 255), (globals.player_size // 2, globals.player_size // 2), globals.player_size // 2)
 original_player_image.blit(temp_mask_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
 
-player_image = original_player_image.copy()
+# --- BUTTONS ---
+skill_tree_button = create_button("Skill Tree", 810, 490, 300, 75)
+Restart_button = create_button("Restart", 810, 560, 300, 75)
+quit_button = create_button("Quit", 810, 630, 300, 75)
+continue_button = create_button("Continue", 810, 420, 300, 75)
 
+game_over_buttons = [quit_button, Restart_button, skill_tree_button]
+pause_menu_buttons = [continue_button, Restart_button, quit_button, skill_tree_button]
+
+# --- SHARED STATE ---
+obstacles = []
+enemies = []
+current_player_rotation_angle = 0
+
+# --- UI & LOGIC HELPERS ---
+
+def draw_ui_bar(screen, x, y, current, maximum, bar_image):
+    """
+    Renders the bar by clipping the source image so it drains 
+    and reveals the game background.
+    """
+    # 1. Calculate the percentage (0.0 to 1.0)
+    ratio = max(0, min(1, current / maximum))
+    
+    img_w = bar_image.get_width()
+    img_h = bar_image.get_height()
+
+    # 2. DYNAMIC PERCENTAGE BOUNDARIES
+    # These define the 'progress' area inside your PNG.
+    start_pct = 0.32  # Pixels before the color starts (icon area)
+    end_pct = 0.96    # Pixels where the color ends
+    
+    # Calculate pixel-perfect boundaries
+    fill_start_x = int(img_w * start_pct)
+    total_fill_width = int(img_w * end_pct) - fill_start_x
+    
+    # 3. CALCULATE VISIBLE WIDTH
+    # This determines how much of the 'color' we actually draw
+    visible_fill_width = int(total_fill_width * ratio)
+
+    # 4. DRAWING STEPS
+    # First: Draw the static part of the bar (the icon/head of the bar)
+    # Area = (x_offset, y_offset, width, height)
+    icon_area = pygame.Rect(0, 0, fill_start_x, img_h)
+    screen.blit(bar_image, (x, y), icon_area)
+
+    # Second: Draw the 'Current' color amount (The draining part)
+    if visible_fill_width > 0:
+        fill_area = pygame.Rect(fill_start_x, 0, visible_fill_width, img_h)
+        screen.blit(bar_image, (x + fill_start_x, y), fill_area)
+        
+    # Third: Draw the end-cap of the bar (the small tip after the color)
+    # This keeps the border looking complete even when empty
+    end_cap_start = int(img_w * end_pct)
+    end_cap_width = img_w - end_cap_start
+    screen.blit(bar_image, (x + end_cap_start, y), pygame.Rect(end_cap_start, 0, end_cap_width, img_h))
 
 # Function to check if two circles collide
 def check_collision(player_pos, player_radius, other_rect):
@@ -124,7 +165,7 @@ def pause_screen(screen, font):
 def choice_menu(button_list, screen):
     menu_clock = pygame.time.Clock() 
     while True:
-       
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -184,8 +225,9 @@ def generate_obstacles():
     num_obstacles = random.randint(3, 6)
     new_obstacles = []
     for _ in range(num_obstacles):
-        x, y, x_speed_per_sec, y_speed_per_sec = get_offscreen_spawn_and_direction(50, 50)
-        obstacle = GameObject(x, y, 50, 50, 10, x_speed_per_sec, y_speed_per_sec, meteorite_images[random.randint(1,6)])
+        x, y, x_speed, y_speed = get_offscreen_spawn_and_direction(50, 50)
+        # Passing all required arguments to GameObject
+        obstacle = GameObject(x, y, 50, 50, 10, x_speed, y_speed, meteorite_images[random.randint(1,6)])
         new_obstacles.append(obstacle)
     return new_obstacles
 
@@ -241,11 +283,7 @@ def gameplay_page(screen, WHITE, font):
     enemies.clear()
     globals.player_hp = globals.player_max_hp
     globals.player_energy = globals.player_max_energy
-    globals.money = 111110
     game_level = 1
-
-    energy_font = pygame.font.Font(None, 18)
-    hp_font = pygame.font.Font(None, 18)
 
     clock = pygame.time.Clock()
     mouse_x, mouse_y = globals.SCREEN_WIDTH / 2, globals.SCREEN_HEIGHT / 2
@@ -263,7 +301,7 @@ def gameplay_page(screen, WHITE, font):
 
 
     while True:
-        dt = clock.get_time() / 1000.0
+        dt = clock.tick(60) / 1000.0
 
         screen.fill(WHITE)
         screen.blit(background_image, (0, 0))
@@ -294,22 +332,12 @@ def gameplay_page(screen, WHITE, font):
 
             screen.blit(obstacle.image, (obstacle.rect.x, obstacle.rect.y))
 
-            # FIX: Use a fixed width (50) instead of obstacle.rect.width
-            # Since you spawn them with 50,50 in generate_obstacles()
-            fixed_bar_width = 50 
+            health_bar_width = obstacle.rect.width
             health_bar_height = 8
-            health_percentage = max(0, obstacle.hp / obstacle.max_hp)
-            
-            # Center the bar relative to the obstacle's center
-            bar_x = obstacle.rect.centerx - (fixed_bar_width // 2)
-            bar_y = obstacle.rect.y - health_bar_height - 5
-
-            # Draw background (Red)
-            pygame.draw.rect(screen, (255, 0, 0), (bar_x, bar_y, fixed_bar_width, health_bar_height))
-            # Draw current health (Green)
-            pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, fixed_bar_width * health_percentage, health_bar_height))
-            # Draw border (Black)
-            pygame.draw.rect(screen, (0, 0, 0), (bar_x, bar_y, fixed_bar_width, health_bar_height), 1)
+            health_percentage = obstacle.hp / obstacle.max_hp
+            pygame.draw.rect(screen, (255, 0, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width, health_bar_height))
+            pygame.draw.rect(screen, (0, 255, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width * health_percentage, health_bar_height))
+            pygame.draw.rect(screen, (0, 0, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width, health_bar_height), 1)
 
             if check_collision((player_x, player_y), player_radius, obstacle.rect):
                 # Store the current HP values before they start changing
@@ -352,7 +380,7 @@ def gameplay_page(screen, WHITE, font):
                     return
                 else:
                     globals.player_hp -= enemy.hp
-                   
+                    
                 
 
             if enemy.hp <= 0:
@@ -441,57 +469,40 @@ def gameplay_page(screen, WHITE, font):
                 player_laser.active = False
 
 
-        # --- UI Elements ---
-        energy_bar_x, energy_bar_y = 20, 20
-        energy_bar_width, energy_bar_height = 200, 25
-        pygame.draw.rect(screen, (100, 100, 100), (energy_bar_x, energy_bar_y, energy_bar_width, energy_bar_height))
-        energy_width = int((globals.player_energy / globals.player_max_energy) * energy_bar_width)
-        pygame.draw.rect(screen, (0, 255, 0), (energy_bar_x, energy_bar_y, energy_width, energy_bar_height))
-        pygame.draw.rect(screen, (0, 0, 0), (energy_bar_x, energy_bar_y, energy_bar_width, energy_bar_height), 2)
-        energy_text = energy_font.render("Energy", True, (0, 0, 0))
-        screen.blit(energy_text, (energy_bar_x + 6, energy_bar_y + 6))
+        # --- STYLIZED UI DRAWING (Dynamic Reveal) ---
+        # The logic has been switched so blitting the image is LAST.
+        # We draw a dark 'VOID' rectangle over the progress area first, then blit the PNG.
+        
+        # Energy bar (Blue)
+        draw_ui_bar(screen, 20, 10, globals.player_energy, globals.player_max_energy, energy_bar_img)
+        # HP bar (Pink)
+        draw_ui_bar(screen, 20, 60, globals.player_hp, globals.player_max_hp, hp_bar_img)
+        
+        # Money text positioned correctly below HP bar
+        money_txt = font.render(f"Money: {round(globals.money, 2)}", True, (255, 255, 255))
+        # Places money text 10 pixels below the small HP bar frame
+        screen.blit(money_txt, (25, 60 + hp_bar_img.get_height() + 10))
 
-        hp_bar_x, hp_bar_y = 20, 60
-        hp_bar_width, hp_bar_height = 200, 25
-        pygame.draw.rect(screen, (100, 100, 100), (hp_bar_x, hp_bar_y, hp_bar_width, hp_bar_height))
-        hp_width = int((globals.player_hp / globals.player_max_hp) * hp_bar_width)
-        pygame.draw.rect(screen, (255, 0, 0), (hp_bar_x, hp_bar_y, hp_width, hp_bar_height))
-        pygame.draw.rect(screen, (0, 0, 0), (hp_bar_x, hp_bar_y, hp_bar_width, hp_bar_height), 2)
-        hp_text = hp_font.render("HP", True, (0, 0, 0))
-        screen.blit(hp_text, (hp_bar_x + 6, hp_bar_y + 6))
+        # Performance and level stats
+        fps_txt = font.render(f"FPS: {int(clock.get_fps())}", True, (255, 255, 255))
+        # Places stats at the top right, with slight padding
+        screen.blit(fps_txt, (globals.SCREEN_WIDTH - 150, 20))
+        
+        enemies_count_txt = font.render(f"Enemies: {len(enemies)}", True, (255, 255, 255))
+        screen.blit(enemies_count_txt, (globals.SCREEN_WIDTH - 150, 50))
 
-        money_text = font.render(f"Money: {round(globals.money, 2)}", True, (0, 0, 0))
-        screen.blit(money_text, (10, 100))
-
-        fps = int(clock.get_fps())
-        fps_text = font.render(f"FPS: {fps}", True, (0, 0, 0))
-        screen.blit(fps_text, (screen.get_width() - fps_text.get_width() - 10, 10))
-
-        enemies_count_text = font.render(f"Enemies: {len(enemies)}", True, (0, 0, 0))
-        screen.blit(enemies_count_text, (screen.get_width() - enemies_count_text.get_width() - 10, 50))
-
-        game_level_text = font.render(f"Level: {game_level}", True, (0, 0, 0))
-        screen.blit(game_level_text, (screen.get_width() - game_level_text.get_width() - 10, 90))
+        level_txt = font.render(f"Level: {game_level}", True, (255, 255, 255))
+        screen.blit(level_txt, (globals.SCREEN_WIDTH - 150, 80))
 
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    # 1. Open the pause menu
-                    pause_screen_result(screen, font, "Paused")
-                    
-                    # 2. CRITICAL FIX: Reset timers after returning from pause
-                    # This prevents the game from "jumping" forward
-                    current_time = time.time()
-                    last_obstacle_time = current_time
-                    last_enemy_spawn_time = current_time
-                    
-                    # 3. Clear the clock so the next 'dt' isn't massive
+                    pause_screen_result(screen, font)
+                    last_obstacle_time = last_enemy_spawn_time = time.time()
                     clock.tick() 
-
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
         pygame.display.update()
-        clock.tick(60)

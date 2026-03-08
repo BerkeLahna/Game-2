@@ -4,8 +4,12 @@ import random
 import math
 from skilltree import skill_tree_page
 import globals
-import time 
+import time
 from buttons import *
+from enemy import Enemy
+from enemy_laser import EnemyLaser
+from laser import Laser
+from game_object import GameObject, get_offscreen_spawn_and_direction, meteorite_images
 
 explosion_images = {
     1 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion1.png'), (60,60)),
@@ -15,16 +19,6 @@ explosion_images = {
     5 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion5_scuffed.png'), (60,60)),
     6 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion6.png'), (60,60)),
     7 : pygame.transform.scale(pygame.image.load('Images/Explosion/explosion7.png'), (60,60))
-}
-
-
-meteorite_images = {
-    1 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor1.jpeg'), (50,50)),
-    2 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor2.jpeg'), (50,50)),
-    3 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor3.jpeg'), (50,50)),
-    4 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor4.jpeg'), (50,50)),
-    5 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor5.jpeg'), (50,50)),
-    6 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor6.jpeg'), (50,50))
 }
 
 skill_tree_button = create_button("Skill Tree", 810, 490, 300, 75)
@@ -44,19 +38,18 @@ pause_menu_buttons = [
     quit_button,
     skill_tree_button
 ]
-    
-
 
 explosion_sound = pygame.mixer.Sound("Images/Explosion/explosion_alternate1.mp3")
 
 obstacles = []
+enemies = []
 
-current_player_rotation_angle = 0 
+current_player_rotation_angle = 0
 
-background_image = pygame.image.load('Images/menu (1).jpeg')  
-background_image = pygame.transform.scale(background_image, (1920, 1080)) 
+background_image = pygame.image.load('Images/menu (1).jpeg')
+background_image = pygame.transform.scale(background_image, (1920, 1080))
 
-raw_player_image = pygame.image.load('Images/Ships/ship-2.jpeg').convert_alpha()
+raw_player_image = pygame.image.load('Images/Ships/ship-2.png').convert_alpha()
 raw_player_image = pygame.transform.scale(raw_player_image, (globals.player_size, globals.player_size))
 original_player_image = pygame.Surface(
     (globals.player_size, globals.player_size), pygame.SRCALPHA
@@ -72,26 +65,20 @@ pygame.draw.circle(
 )
 original_player_image.blit(temp_mask_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
 
-
-
-player_image = original_player_image.copy() 
-
-
+player_image = original_player_image.copy()
 
 
 # Function to check if two circles collide
-def check_collision(player_pos, player_radius, obstacle):
-    # Calculate distance between player center and obstacle center
-    distance = pygame.math.Vector2(player_pos).distance_to(obstacle.center)
-    return distance < player_radius + obstacle.width // 2  # If the distance is less than the combined radius
+def check_collision(player_pos, player_radius, other_rect):
+    distance = pygame.math.Vector2(player_pos).distance_to(other_rect.center)
+    # Adjusted offset for more forgiving projectile collision
+    return distance < (player_radius + other_rect.width // 2 - 5)
 
-# Function to display the game over screen with buttons
 def game_over_screen(screen, font, player_pos, no_fuel = False ):
-    global mouse_x, mouse_y
+    pygame.mouse.set_visible(True)
     fuel_empty_rect = pygame.Rect(globals.SCREEN_WIDTH /2 - 145, 360, 300, 75)
     game_over_rect = pygame.Rect(globals.SCREEN_WIDTH /2 - 145, 300, 300, 75)
 
-    
     if not no_fuel:
         pygame.draw.circle(screen, (255, 120, 51), player_pos, 30)
         explosion_sound.play()
@@ -107,35 +94,34 @@ def game_over_screen(screen, font, player_pos, no_fuel = False ):
             x,y = player_pos
             screen.blit(explosion_image, (x-30,y-30))
             pygame.display.update(x,y,60,60)
-    
-       
+
     top = (100, 180, 220, 55)
     bottom = (30, 60, 90, 55)
     rect_gradient = create_vertical_color_gradient((400, 1080), top, bottom)
-    screen.blit(rect_gradient, ( globals.SCREEN_WIDTH /2 - 200, 0))  
+    screen.blit(rect_gradient, ( globals.SCREEN_WIDTH /2 - 200, 0))
 
     game_over_text = text_styling((game_over_rect,"Game Over"), screen)
     if no_fuel:
-        
-        fuel_empty_text = text_styling((fuel_empty_rect,"Ran Out Of Fuel"), screen)     
-    
+        fuel_empty_text = text_styling((fuel_empty_rect,"Ran Out Of Fuel"), screen)
+
     return choice_menu(game_over_buttons,screen)
 
 def pause_screen(screen, font):
+    pygame.mouse.set_visible(True)
     font = pygame.font.SysFont("8-Bit-Madness", 46)
     font.set_bold(True)
     pause_text_rect = pygame.Rect(globals.SCREEN_WIDTH /2 - 145, 300, 300, 75)
     top = (100, 180, 220, 55)
     bottom = (30, 60, 90, 55)
     rect_gradient = create_vertical_color_gradient((400, 1080), top, bottom)
-    screen.blit(rect_gradient, ( globals.SCREEN_WIDTH /2 - 200, 0))  
-    
+    screen.blit(rect_gradient, ( globals.SCREEN_WIDTH /2 - 200, 0))
+
     pause_text = text_styling( (pause_text_rect,"Paused"), screen)
     return choice_menu(pause_menu_buttons,screen)
-    
+
 def choice_menu(button_list, screen):
         while True:
-    
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -146,7 +132,7 @@ def choice_menu(button_list, screen):
                     for button in button_list:
                         if button[0].collidepoint(mouse_x, mouse_y):
                             return button[1]
-                        
+
             mouse_x, mouse_y = pygame.mouse.get_pos()
             for button in button_list:
                 if button[0].collidepoint(mouse_x,mouse_y):
@@ -154,24 +140,25 @@ def choice_menu(button_list, screen):
                 else:
                     button_draw(button, screen)
 
-
-
             pygame.display.update()
-        
 
 
 def game_over_result(screen, font, player_pos, no_fuel = False):
         result = game_over_screen(screen, font, player_pos, no_fuel )
         obstacles.clear()
+        enemies.clear()
 
         if result == "Skill Tree":
             skill_tree_page(screen, (255,255,255), font, gameplay_page)
         elif result == "Restart":
-            gameplay_page(screen, (255, 255, 255), font)  # Restart gameplay
+            globals.player_hp = globals.player_max_hp
+            globals.player_energy = globals.player_max_energy
+            globals.money = 0
+            gameplay_page(screen, (255, 255, 255), font)
         elif result == "Quit":
             pygame.quit()
             sys.exit()
-            
+
 def pause_screen_result(screen, font, text = "Paused"):
         result = pause_screen(screen, font)
         if result == "Skill Tree":
@@ -179,142 +166,62 @@ def pause_screen_result(screen, font, text = "Paused"):
         elif result == "Continue":
             return
         elif result == "Restart":
-            gameplay_page(screen, (255, 255, 255), font)  # Restart gameplay
+            globals.player_hp = globals.player_max_hp
+            globals.player_energy = globals.player_max_energy
+            globals.money = 0
+            gameplay_page(screen, (255, 255, 255), font)
         elif result == "Quit":
             pygame.quit()
             sys.exit()
 
-# Laser class to handle laser mechanics
-class Laser:
-    def __init__(self, start_pos, end_pos, damage_per_second):
-        self.start_pos = start_pos
-        self.end_pos = end_pos
-        self.damage_per_second = damage_per_second  # Dynamic damage per second
-        self.duration = 0  # Duration in seconds
-        self.length = math.dist(start_pos, end_pos)  # Calculate the length of the laser
 
-    def update(self, dt, obstacles):
-        self.duration += dt
-        # Apply damage continuously while the laser is active
-        self.damage_obstacles(obstacles, dt)
-
-    def damage_obstacles(self, obstacles, dt):
-        for obstacle in obstacles:
-            distance_to_obstacle = pygame.math.Vector2(self.end_pos).distance_to(obstacle.rect.center)
-            if distance_to_obstacle <= obstacle.rect.width // 2:  # Check if obstacle is within range
-                # Damage applied per frame, based on damage per second and time delta (dt)
-                damage_taken = self.damage_per_second * dt  # Adjust damage per frame
-                globals.money += damage_taken  # Increment money based on damage dealt
-                obstacle.hp -= damage_taken  # Reduce the object’s HP
-                obstacle.last_damage = damage_taken  # Track the last damage taken by the obstacle
-
-                if obstacle.hp <= 0:
-                    obstacles.remove(obstacle)  # Remove the obstacle if HP reaches 0
-
-    def draw(self, screen):
-        pygame.draw.line(screen, (255, 0, 0), self.start_pos, self.end_pos, 3)  # Red laser line
-
-# GameObject class to represent obstacles with health
-class GameObject:
-    def __init__(self, x, y, width, height, hp, x_speed, y_speed, image = None):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.hp = hp
-        self.x_speed = x_speed  # Speed of the obstacle
-        self.y_speed = y_speed
-        self.image = image
-    def move(self):
-        self.rect.x += self.x_speed  # Move the obstacle horizontally
-        self.rect.y += self.y_speed  # Move the obstacle vertically
-        
-          # Check if the obstacle is out of view and reset it to a random off-screen position
-        if self.rect.x + self.rect.width < 0 or self.rect.x > 1920 or self.rect.y + self.rect.height < 0 or self.rect.y > 1080:
-            self.reset_position()  # Reset position if off-screen
-            
-    def reset_position(self):
-        move_into_screen(self)
-        self.hp = 10  # Reset health to 10 when it goes off-screen
-
-
-def move_into_screen(x = 0, y = 0, x_speed = 0, y_speed = 0):
-        direction = random.choice(['left', 'right', 'top', 'bottom'])
-        if direction == 'left':
-            x = -50  # Place off-screen to the left
-            y = random.randint(0, 1080)  # Random y position within the screen height
-            x_speed = random.uniform(1, 3)  # Random speed between 1 and 3 pixels per frame
-            y_speed = random.uniform(-1, 1)  # Random vertical speed (up or down)
-        elif direction == 'right':
-            x = 1920  # Place off-screen to the right
-            y = random.randint(0, 1080)  # Random y position within the screen height
-            x_speed = random.uniform(-3, -1)  # Random speed between -1 and -3 (towards left)
-            y_speed = random.uniform(-1, 1)  # Random vertical speed (up or down)
-        elif direction == 'top':
-            x = random.randint(0, 1920)  # Random x position within the screen width
-            y = -50  # Place off-screen above the window
-            x_speed = random.uniform(-1, 1)  # Random horizontal speed (left or right)
-            y_speed = random.uniform(1, 3)  # Random downward speed
-        elif direction == 'bottom':
-            x = random.randint(0, 1920)  # Random x position within the screen width
-            y = 1080  # Place off-screen below the window
-            x_speed = random.uniform(-1, 1)  # Random horizontal speed (left or right)
-            y_speed = random.uniform(-3, -1)  # Random upward speed
-        return GameObject(x, y, 50, 50, 10, x_speed, y_speed, meteorite_images[random.randint(1,6)])
-            
 def generate_obstacles():
-    num_obstacles = random.randint(3, 6)  # Generate between 1 and 4 obstacles
+    num_obstacles = random.randint(3, 6)
+    new_obstacles = []
     for _ in range(num_obstacles):
-        obstacle = move_into_screen()
-        obstacles.append(obstacle)
-    return obstacles
+        x, y, x_speed_per_sec, y_speed_per_sec = get_offscreen_spawn_and_direction(50, 50)
+        obstacle = GameObject(x, y, 50, 50, 10, x_speed_per_sec, y_speed_per_sec, meteorite_images[random.randint(1,6)])
+        new_obstacles.append(obstacle)
+    return new_obstacles
 
-
-
-
-
+def spawn_enemies(level, count):
+    new_enemies = []
+    for _ in range(count):
+        new_enemies.append(Enemy(level))
+    return new_enemies
 
 def player_move(player_pos, mouse_pos):
     global current_player_rotation_angle
     player_x, player_y = player_pos
     mouse_x, mouse_y = mouse_pos
-    
 
-    # Calculate the difference in x and y directions
     delta_x = mouse_x - player_x
     delta_y = mouse_y - player_y
 
-        
-    # Calculate the distance to the mouse position
     distance = math.sqrt(delta_x ** 2 + delta_y ** 2)
 
-    # Calculate the variable speed based on the distance
-    # The farther the distance, the faster the speed, capped at max_speed
-    speed = min(globals.player_movement_speed, (distance * 0.05))  # You can tweak 0.1 to control the speed curve
-    
+    speed = min(globals.player_movement_speed, (distance * 0.05))
+
     angle_radians = math.atan2(delta_y, delta_x)
     angle_degrees = math.degrees(angle_radians)
     rotation_angle = 270 - angle_degrees
-    
-    current_normalized = (current_player_rotation_angle  + 180) % 360 - 180
+
+    current_normalized = (current_player_rotation_angle + 180) % 360 - 180
     target_normalized = (rotation_angle + 180) % 360 - 180
 
-    # Calculate the shortest angle difference
     angle_difference = target_normalized - current_normalized
     if angle_difference > 180:
         angle_difference -= 360
     elif angle_difference < -180:
         angle_difference += 360
-        
-    current_player_rotation_angle += angle_difference * globals.player_turn_speed
 
-    # Keep the angle within a reasonable range (e.g., 0 to 360)
+    current_player_rotation_angle += angle_difference * globals.player_turn_speed
     current_player_rotation_angle %= 360
 
-
-    # If the player is within the movement speed, just move to the mouse position
     if distance <= speed:
         player_x = mouse_x
         player_y = mouse_y
     else:
-        # Scale the movement to the calculated speed
         move_ratio = speed / distance
         player_x += delta_x * move_ratio
         player_y += delta_y * move_ratio
@@ -322,157 +229,218 @@ def player_move(player_pos, mouse_pos):
     return (player_x, player_y, current_player_rotation_angle)
 
 
-
-# Main gameplay loop with collision and laser mechanics
 def gameplay_page(screen, WHITE, font):
-    global obstacles
+    global obstacles, enemies, globals
+
     obstacles.clear()
+    enemies.clear()
+    globals.player_hp = globals.player_max_hp
+    globals.player_energy = globals.player_max_energy
+    globals.money = 0
+    game_level = 1
 
-    energy_font = pygame.font.Font(None, 18)  # Font for energy display
-    # obstacles  = []  # List to hold obstacles
-    
-    # Set up the clock for consistent frame rate
+    energy_font = pygame.font.Font(None, 18)
+    hp_font = pygame.font.Font(None, 18)
+
     clock = pygame.time.Clock()
-    # mouse_x, mouse_y = pygame.mouse.get_pos()
-    mouse_x, mouse_y = globals.SCREEN_WIDTH/2, globals.SCREEN_HEIGHT/2
-    player_x,player_y = mouse_x, mouse_y
+    mouse_x, mouse_y = globals.SCREEN_WIDTH / 2, globals.SCREEN_HEIGHT / 2
+    player_x, player_y = mouse_x, mouse_y
 
-    # Player settings
-    player_radius = 30  # Size of the player (circle)
-    player_color = (0, 0, 255)  # Blue color for the player
-    globals.player_energy = globals.player_max_energy  # Set initial player energy
+    player_radius = 30
 
-    last_obstacle_time = time.time()  # Track the last time obstacles were generated
-    obstacle_generation_interval = random.uniform(0, 1)  # Random interval between 2 and 5 seconds
-    
-    # Laser list to hold the lasers created in the game
-    lasers = []
+    last_obstacle_time = time.time()
+    obstacle_generation_interval = random.uniform(0, 1)
+    last_enemy_spawn_time = time.time()
+    enemy_spawn_interval = 5.0
+
+    player_laser = None
+    gameplay_page.last_player_laser_time = 0
+
 
     while True:
-        
-        screen.fill(WHITE)  # Clear the screen with white background
+        dt = clock.get_time() / 1000.0
+
+        screen.fill(WHITE)
         screen.blit(background_image, (0, 0))
+        pygame.mouse.set_visible(False)
 
-        pygame.mouse.set_visible(False)  # Hide mouse cursor during gameplay
         current_time = time.time()
+
         if current_time - last_obstacle_time >= obstacle_generation_interval:
-            obstacles = generate_obstacles()  # Generate new obstacles
-            last_obstacle_time = current_time  # Update the time
-            obstacle_generation_interval = random.uniform(2, 5)  # Set new random interval
+            obstacles.extend(generate_obstacles())
+            last_obstacle_time = current_time
+            obstacle_generation_interval = random.uniform(2, 5)
 
-        # Draw the obstacles
-        for obstacle in obstacles:
-            obstacle.move()  # Move the obstacle
-            
-            # pygame.draw.rect(screen, (255, 0, 0), obstacle.rect)  # Red color for obstacles
+        if current_time - last_enemy_spawn_time >= enemy_spawn_interval:
+            enemies.extend(spawn_enemies(game_level, 1))
+            last_enemy_spawn_time = current_time
+            enemy_spawn_interval = random.uniform(5, 10)
 
- 
+            game_level += 1
+            print(f"Game Level: {game_level}")
 
-        # Get the current mouse position
+
+        # --- Update and Draw Obstacles (Meteors) ---
+        meteors_to_remove = []
+        for obstacle in list(obstacles):
+            if obstacle.move(dt):
+                meteors_to_remove.append(obstacle)
+                continue
+
+            screen.blit(obstacle.image, (obstacle.rect.x, obstacle.rect.y))
+
+            health_bar_width = obstacle.rect.width
+            health_bar_height = 8
+            health_percentage = obstacle.hp / obstacle.max_hp
+            pygame.draw.rect(screen, (255, 0, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width, health_bar_height))
+            pygame.draw.rect(screen, (0, 255, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width * health_percentage, health_bar_height))
+            pygame.draw.rect(screen, (0, 0, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width, health_bar_height), 1)
+
+            if check_collision((player_x, player_y), player_radius, obstacle.rect):
+                game_over_result(screen, font, (player_x, player_y))
+                return
+
+        for meteor in meteors_to_remove:
+            if meteor in obstacles:
+                obstacles.remove(meteor)
+
+
+        # --- Update and Draw Enemies ---
+        enemies_to_remove = []
+        for enemy in list(enemies):
+            enemy.update(dt, (player_x, player_y), player_radius)
+            enemy.draw(screen)
+
+            if check_collision((player_x, player_y), player_radius, enemy.rect):
+                game_over_result(screen, font, (player_x, player_y))
+                return
+
+            if enemy.hp <= 0:
+                enemies_to_remove.append(enemy)
+
+        for enemy in enemies_to_remove:
+            if enemy in enemies:
+                enemies.remove(enemy)
+                explosion_sound.play()
+
+
+        # --- Enemy Laser Damage and Removal ---
+        for enemy in list(enemies):
+            lasers_to_remove_from_enemy = []
+            for enemy_laser in list(enemy.lasers):
+                # Update enemy laser's position
+                enemy_laser.update(dt)
+                enemy_laser.draw(screen) # Draw the projectile
+
+                # Check for collision with player
+                if enemy_laser.active and check_collision((player_x, player_y), player_radius, enemy_laser.rect):
+                    globals.player_hp -= enemy_laser.damage_per_second * dt # Apply damage
+                    enemy_laser.active = False # Deactivate laser on hit
+
+                if not enemy_laser.active:
+                    lasers_to_remove_from_enemy.append(enemy_laser)
+
+            for laser_to_remove in lasers_to_remove_from_enemy:
+                if laser_to_remove in enemy.lasers:
+                    enemy.lasers.remove(laser_to_remove)
+
+
+        # --- Player Movement and Energy ---
         mouse_x, mouse_y = pygame.mouse.get_pos()
-
-        player_x, player_y, rotation_angle = player_move((player_x,player_y), (mouse_x, mouse_y))
-        # player_image = pygame.transform.rotate(original_player_image, rotation_angle)
+        player_x, player_y, rotation_angle = player_move((player_x, player_y), (mouse_x, mouse_y))
+        player_pos = (player_x, player_y)
         rotated_player_image = pygame.transform.rotate(original_player_image, current_player_rotation_angle)
         player_rect_for_blit = rotated_player_image.get_rect(center=(player_x, player_y))
-        # player_rect = player_image.get_rect(center=(player_x, player_y))
-        player_pos = (player_x, player_y)
         screen.blit(rotated_player_image, player_rect_for_blit)
-        
-        # pygame.draw.circle(screen, player_color, player_pos, player_radius)
 
-
-        globals.player_energy -= globals.energy_depletion_rate*10  # Decrease player energy over time
+        globals.player_energy -= globals.energy_depletion_rate * dt * 100
         if globals.player_energy <= 0:
-            pygame.mouse.set_visible(True)  # Show mouse cursor again
-            game_over_result(screen, font, player_pos, no_fuel = True)  # Show game over screen
-            
- 
+            game_over_result(screen, font, player_pos, no_fuel=True)
+            return
+
+        # Check for game over due to HP after all damage calculations
+        if globals.player_hp <= 0:
+            game_over_result(screen, font, player_pos)
+            return
+
+
+        # --- Player Laser Mechanics (Automatic Continuous Firing) ---
+        closest_target = None
+        min_dist = float('inf')
+        all_targets = obstacles + enemies
+        for target in all_targets:
+            distance_to_target_from_player = pygame.math.Vector2(player_pos).distance_to(target.rect.center)
+            if distance_to_target_from_player <= globals.player_laser_max_range and distance_to_target_from_player < min_dist:
+                min_dist = distance_to_target_from_player
+                closest_target = target
+
+        if closest_target and globals.player_energy > 0:
+            if player_laser is None:
+                player_laser = Laser(player_pos, closest_target.rect.center, globals.laser_damage, globals.player_laser_max_range)
+            player_laser.active = True
+            player_laser.start_pos = pygame.math.Vector2(player_pos)
+            player_laser.end_pos = pygame.math.Vector2(closest_target.rect.center)
+
+            if current_time - gameplay_page.last_player_laser_time > 0.1:
+                globals.player_energy -= 1
+                gameplay_page.last_player_laser_time = current_time
+
+            targets_destroyed_by_laser = player_laser.update(dt, obstacles + enemies)
+            player_laser.draw(screen)
+
+            if targets_destroyed_by_laser:
+                for target in targets_destroyed_by_laser:
+                    if target in obstacles:
+                        obstacles.remove(target)
+                        explosion_sound.play()
+                    elif target in enemies:
+                        enemies.remove(target)
+                        explosion_sound.play()
+        else:
+            if player_laser is not None:
+                player_laser.active = False
+
+
+        # --- UI Elements ---
         energy_bar_x, energy_bar_y = 20, 20
         energy_bar_width, energy_bar_height = 200, 25
         pygame.draw.rect(screen, (100, 100, 100), (energy_bar_x, energy_bar_y, energy_bar_width, energy_bar_height))
-        # Draw current energy (green)
         energy_width = int((globals.player_energy / globals.player_max_energy) * energy_bar_width)
         pygame.draw.rect(screen, (0, 255, 0), (energy_bar_x, energy_bar_y, energy_width, energy_bar_height))
-
-        # Draw border around energy bar (black)
         pygame.draw.rect(screen, (0, 0, 0), (energy_bar_x, energy_bar_y, energy_bar_width, energy_bar_height), 2)
-
-        # Optional: Show "Energy" label
         energy_text = energy_font.render("Energy", True, (0, 0, 0))
-        screen.blit(energy_text , (energy_bar_x + 6, energy_bar_y + 6))
+        screen.blit(energy_text, (energy_bar_x + 6, energy_bar_y + 6))
 
-        money_text = font.render(f"Money: {round(globals.money, 2)}", True, (0, 0, 0))  # Black color for the text
-        screen.blit(money_text, (10, 50))  # Display money below energy
-        
-        # Draw obstacles (rectangles)
-        for obstacle in obstacles:
-            screen.blit(obstacle.image, (obstacle.rect.x, obstacle.rect.y))
-            
-        # Display FPS in the top right corner
+        hp_bar_x, hp_bar_y = 20, 60
+        hp_bar_width, hp_bar_height = 200, 25
+        pygame.draw.rect(screen, (100, 100, 100), (hp_bar_x, hp_bar_y, hp_bar_width, hp_bar_height))
+        hp_width = int((globals.player_hp / globals.player_max_hp) * hp_bar_width)
+        pygame.draw.rect(screen, (255, 0, 0), (hp_bar_x, hp_bar_y, hp_width, hp_bar_height))
+        pygame.draw.rect(screen, (0, 0, 0), (hp_bar_x, hp_bar_y, hp_bar_width, hp_bar_height), 2)
+        hp_text = hp_font.render("HP", True, (0, 0, 0))
+        screen.blit(hp_text, (hp_bar_x + 6, hp_bar_y + 6))
+
+        money_text = font.render(f"Money: {round(globals.money, 2)}", True, (0, 0, 0))
+        screen.blit(money_text, (10, 100))
+
         fps = int(clock.get_fps())
-        fps_text = font.render(f"FPS: {fps}", True, (0, 0, 0))  # Black color for the text
+        fps_text = font.render(f"FPS: {fps}", True, (0, 0, 0))
         screen.blit(fps_text, (screen.get_width() - fps_text.get_width() - 10, 10))
-        
-        enemies = len(obstacles)  # Count the number of enemies
-        enemies_text = font.render(f"enemies: {enemies}", True, (0, 0, 0))  # Black color for the text
-        screen.blit(enemies_text, (screen.get_width() - fps_text.get_width() - 60, 50))
 
-        # Check for collisions with any obstacles
-        for obstacle in obstacles:
-            if check_collision(player_pos, player_radius, obstacle.rect):
-                pygame.mouse.set_visible(True)  # Show mouse cursor again
+        enemies_count_text = font.render(f"Enemies: {len(enemies)}", True, (0, 0, 0))
+        screen.blit(enemies_count_text, (screen.get_width() - enemies_count_text.get_width() - 10, 50))
 
-                game_over_result(screen, font, player_pos)  # Show game over screen if collision occurs
+        game_level_text = font.render(f"Level: {game_level}", True, (0, 0, 0))
+        screen.blit(game_level_text, (screen.get_width() - game_level_text.get_width() - 10, 90))
 
-        # Laser mechanics
-        # Count how many lasers are currently active BEFORE attempting to create new ones
-        active_lasers = sum(1 for obstacle in obstacles if hasattr(obstacle, 'laser') and obstacle.laser is not None)
 
-        for obstacle in obstacles:
-            obstacle_center = obstacle.rect.center
-            distance_to_obstacle = pygame.math.Vector2(player_pos).distance_to(obstacle_center)
-
-            # Draw health bar above the obstacle
-            health_bar_width = 50
-            health_bar_height = 10
-            health_percentage = obstacle.hp / 10
-            pygame.draw.rect(screen, (0, 255, 0), (obstacle.rect.x , obstacle.rect.y - 15, health_bar_width * health_percentage, health_bar_height))
-            pygame.draw.rect(screen, (0, 0, 0), (obstacle.rect.x , obstacle.rect.y - 15, health_bar_width, health_bar_height), 2)
-
-            if distance_to_obstacle < 150:
-                # Only create a new laser if under the max limit
-                if (not hasattr(obstacle, 'laser') or obstacle.laser is None) and active_lasers < globals.max_lasers:
-                    obstacle.laser = Laser(player_pos, obstacle_center, globals.laser_damage)
-                    active_lasers += 1  # Increment since a new laser is created
-
-                if hasattr(obstacle, 'laser') and obstacle.laser is not None:
-                    obstacle.laser.start_pos = player_pos
-                    obstacle.laser.end_pos = obstacle_center
-                    obstacle.laser.update(clock.get_time() / 1000.0, obstacles)
-                    obstacle.laser.draw(screen)
-
-                # Remove laser if obstacle is dead
-                if obstacle.hp <= 0 and hasattr(obstacle, 'laser') and obstacle.laser is not None:
-                    obstacle.laser = None
-                    active_lasers -= 1
-
-            else:
-                # Player is not near, remove laser if exists
-                if hasattr(obstacle, 'laser') and obstacle.laser is not None:
-                    obstacle.laser = None
-                    active_lasers -= 1
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    pygame.mouse.set_visible(True)
-                    pause_screen_result(screen, font, "Paused")  # Show game over screen when Escape is pressed
+                    pause_screen_result(screen, font, "Paused")
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
-        # Update the display
         pygame.display.update()
-
-        # Control the frame rate (60 FPS)
         clock.tick(60)

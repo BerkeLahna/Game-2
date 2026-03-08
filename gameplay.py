@@ -27,11 +27,10 @@ explosion_sound = pygame.mixer.Sound("Images/Explosion/explosion_alternate1.mp3"
 # UI Elements with Precision Scaling
 try:
     # --- LOAD PNGs (already set up for dynamic use) ---
-    raw_hp_bar = pygame.image.load(r'Images\hp_bar.png').convert_alpha()
-    raw_energy_bar = pygame.image.load(r'Images\energy_bar.png').convert_alpha()
+    raw_hp_bar = pygame.image.load(r'Images\hp_bar_full.png').convert_alpha()
+    raw_energy_bar = pygame.image.load(r'Images\energy_bar_full.png').convert_alpha()
     
-    # Scale adjusted to 0.04 as per your requirement
-    ui_scale = 0.04 
+    ui_scale = 0.6
     hp_bar_img = pygame.transform.scale(raw_hp_bar, (int(raw_hp_bar.get_width() * ui_scale), int(raw_hp_bar.get_height() * ui_scale)))
     energy_bar_img = pygame.transform.scale(raw_energy_bar, (int(raw_energy_bar.get_width() * ui_scale), int(raw_energy_bar.get_height() * ui_scale)))
 except Exception as e:
@@ -70,44 +69,43 @@ current_player_rotation_angle = 0
 
 def draw_ui_bar(screen, x, y, current, maximum, bar_image):
     """
-    Renders the bar by clipping the source image so it drains 
-    and reveals the game background.
+    Draws the full bar and 'punches a hole' through the color 
+    to reveal the background while keeping the border intact.
     """
-    # 1. Calculate the percentage (0.0 to 1.0)
     ratio = max(0, min(1, current / maximum))
-    
-    img_w = bar_image.get_width()
-    img_h = bar_image.get_height()
+    img_w, img_h = bar_image.get_size()
 
-    # 2. DYNAMIC PERCENTAGE BOUNDARIES
-    # These define the 'progress' area inside your PNG.
-    start_pct = 0.32  # Pixels before the color starts (icon area)
-    end_pct = 0.96    # Pixels where the color ends
-    
-    # Calculate pixel-perfect boundaries
+    # 1. Create a temporary surface for the bar
+    # This must be SRCALPHA to handle transparency properly
+    temp_bar = pygame.Surface((img_w, img_h), pygame.SRCALPHA)
+    temp_bar.blit(bar_image, (0, 0))
+
+    # 2. Define the 'shutter' (the part we want to REMOVE)
+    start_pct, end_pct = 0.32, 0.91
+    top_pct, bottom_pct = 0.35, 0.53
+
     fill_start_x = int(img_w * start_pct)
     total_fill_width = int(img_w * end_pct) - fill_start_x
-    
-    # 3. CALCULATE VISIBLE WIDTH
-    # This determines how much of the 'color' we actually draw
-    visible_fill_width = int(total_fill_width * ratio)
+    fill_y = int(img_h * top_pct)
+    fill_height = int(img_h * (bottom_pct - top_pct))
 
-    # 4. DRAWING STEPS
-    # First: Draw the static part of the bar (the icon/head of the bar)
-    # Area = (x_offset, y_offset, width, height)
-    icon_area = pygame.Rect(0, 0, fill_start_x, img_h)
-    screen.blit(bar_image, (x, y), icon_area)
+    empty_width = int(total_fill_width * (1 - ratio))
 
-    # Second: Draw the 'Current' color amount (The draining part)
-    if visible_fill_width > 0:
-        fill_area = pygame.Rect(fill_start_x, 0, visible_fill_width, img_h)
-        screen.blit(bar_image, (x + fill_start_x, y), fill_area)
+    if empty_width > 0:
+        # Create a 'cutout' rectangle
+        # We use (0, 0, 0, 0) to essentially erase the color in this area
+        shutter_rect = pygame.Rect(
+            fill_start_x + (total_fill_width - empty_width),
+            fill_y,
+            empty_width,
+            fill_height
+        )
         
-    # Third: Draw the end-cap of the bar (the small tip after the color)
-    # This keeps the border looking complete even when empty
-    end_cap_start = int(img_w * end_pct)
-    end_cap_width = img_w - end_cap_start
-    screen.blit(bar_image, (x + end_cap_start, y), pygame.Rect(end_cap_start, 0, end_cap_width, img_h))
+        # This erases the pixels on the temp_bar surface inside the shutter_rect
+        pygame.draw.rect(temp_bar, (0, 0, 0, 0), shutter_rect)
+
+    # 3. Blit the modified bar to the screen
+    screen.blit(temp_bar, (x, y))
 
 # Function to check if two circles collide
 def check_collision(player_pos, player_radius, other_rect):
@@ -332,12 +330,22 @@ def gameplay_page(screen, WHITE, font):
 
             screen.blit(obstacle.image, (obstacle.rect.x, obstacle.rect.y))
 
-            health_bar_width = obstacle.rect.width
+            # FIX: Use a fixed width (50) instead of obstacle.rect.width
+            # Since you spawn them with 50,50 in generate_obstacles()
+            fixed_bar_width = 50 
             health_bar_height = 8
-            health_percentage = obstacle.hp / obstacle.max_hp
-            pygame.draw.rect(screen, (255, 0, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width, health_bar_height))
-            pygame.draw.rect(screen, (0, 255, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width * health_percentage, health_bar_height))
-            pygame.draw.rect(screen, (0, 0, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width, health_bar_height), 1)
+            health_percentage = max(0, obstacle.hp / obstacle.max_hp)
+            
+            # Center the bar relative to the obstacle's center
+            bar_x = obstacle.rect.centerx - (fixed_bar_width // 2)
+            bar_y = obstacle.rect.y - health_bar_height - 5
+
+            # Draw background (Red)
+            pygame.draw.rect(screen, (255, 0, 0), (bar_x, bar_y, fixed_bar_width, health_bar_height))
+            # Draw current health (Green)
+            pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, fixed_bar_width * health_percentage, health_bar_height))
+            # Draw border (Black)
+            pygame.draw.rect(screen, (0, 0, 0), (bar_x, bar_y, fixed_bar_width, health_bar_height), 1)
 
             if check_collision((player_x, player_y), player_radius, obstacle.rect):
                 # Store the current HP values before they start changing
@@ -476,13 +484,12 @@ def gameplay_page(screen, WHITE, font):
         # Energy bar (Blue)
         draw_ui_bar(screen, 20, 10, globals.player_energy, globals.player_max_energy, energy_bar_img)
         # HP bar (Pink)
-        draw_ui_bar(screen, 20, 60, globals.player_hp, globals.player_max_hp, hp_bar_img)
+        draw_ui_bar(screen, 20, 80, globals.player_hp, globals.player_max_hp, hp_bar_img)
         
         # Money text positioned correctly below HP bar
         money_txt = font.render(f"Money: {round(globals.money, 2)}", True, (255, 255, 255))
-        # Places money text 10 pixels below the small HP bar frame
-        screen.blit(money_txt, (25, 60 + hp_bar_img.get_height() + 10))
-
+        # Positioned 20 pixels below the HP bar frame for better legibility
+        screen.blit(money_txt, (25, 60 + hp_bar_img.get_height() + 5))
         # Performance and level stats
         fps_txt = font.render(f"FPS: {int(clock.get_fps())}", True, (255, 255, 255))
         # Places stats at the top right, with slight padding

@@ -1,7 +1,7 @@
 import math
 
 max_lasers = 1
-laser_damage = 40/40
+laser_damage = 10
 player_max_energy = 1000
 player_energy = player_max_energy
 player_movement_speed = 5
@@ -12,7 +12,7 @@ player_laser_max_range = 100 # Max distance player laser can reach in pixels
 
 energy_view1 = 1000
 energy_view = math.log(energy_view1,10)
-money = 0
+money = 1010100
 SCREEN_WIDTH, SCREEN_HEIGHT = 1920, 1080
 player_turn_speed = 0.05
 player_size = 60

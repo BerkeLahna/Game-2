@@ -33,13 +33,15 @@ tooltip_font = pygame.font.Font(None, 22) # Font for tooltip display
 try:
     skill_images = {
         1 : pygame.transform.scale(pygame.image.load('Images/skill-1.jpeg'), (SKILL_WIDTH, SKILL_HEIGHT)),
-        2 : pygame.transform.scale(pygame.image.load('Images/skill-2.jpeg'), (SKILL_WIDTH, SKILL_HEIGHT))
+        2 : pygame.transform.scale(pygame.image.load('Images/skill-2.jpeg'), (SKILL_WIDTH, SKILL_HEIGHT)),
+        3 : pygame.transform.scale(pygame.image.load('Images/skill-3.jpeg'), (SKILL_WIDTH, SKILL_HEIGHT))
     }
 except pygame.error as e:
     print(f"Warning: Could not load skill images. Ensure Images/Skill-1.png and Images/Skill-2.png exist. Error: {e}")
     skill_images = {
         1: pygame.Surface((SKILL_WIDTH, SKILL_HEIGHT), pygame.SRCALPHA),
-        2: pygame.Surface((SKILL_WIDTH, SKILL_HEIGHT), pygame.SRCALPHA)
+        2: pygame.Surface((SKILL_WIDTH, SKILL_HEIGHT), pygame.SRCALPHA),
+        3: pygame.Surface((SKILL_WIDTH, SKILL_HEIGHT), pygame.SRCALPHA)
     }
     pygame.draw.rect(skill_images[1], (100, 100, 200), skill_images[1].get_rect(), border_radius=5)
     pygame.draw.circle(skill_images[2], (200, 100, 100), (SKILL_WIDTH//2, SKILL_HEIGHT//2), SKILL_WIDTH//2 - 5)
@@ -71,7 +73,7 @@ def save_skills(skills_list):
     with open("buttons.txt", "w") as file:
         for skill in skills_list:
             parent_names_str = ";".join(skill.parent_attr_names)
-            file.write(f"Skill({skill.attr_name},{skill.rect.x},{skill.rect.y},{skill.level},{skill.visible},{parent_names_str})\n")
+            file.write(f"Skill({skill.attr_name},{skill.rect.x},{skill.rect.y},{skill.level},{skill.max_level},{skill.visible},{parent_names_str})\n")
 
 # Function to load skill data from a file in the new format
 def load_skills():
@@ -97,14 +99,15 @@ def load_skills():
                     x = int(parts[1])
                     y = int(parts[2])
                     level = int(parts[3])
-                    visible = parts[4].lower() == 'true'
-                    parent_names_str = parts[5].strip() if len(parts) > 5 else ""
+                    max_lvl = int(parts[4]) if parts[4] else 5
+                    visible = parts[5].lower() == 'true'
+                    parent_names_str = parts[6].strip() if len(parts) > 5 else ""
 
                     img_key = (line_num % len(skill_images)) + 1 if skill_images else None
                     img = skill_images.get(img_key)
 
                     skill = Skill(text=attr_name.replace('_', ' ').title(), x=x, y=y,
-                                  attr_name=attr_name, level=level,
+                                  attr_name=attr_name, level=level, max_level=max_lvl,
                                   visible=visible, image=img,
                                   description=skill_descriptions.get(attr_name, f"Modifies {attr_name.replace('_', ' ').title()}."),
                                   parent_attr_names=[],
@@ -136,13 +139,15 @@ def load_skills():
 
 
 # Function to handle text input for skill creation/editing (simplified)
-def get_skill_data_input(current_attr_name=None):
+def get_skill_data_input(current_attr_name=None, current_max_level=None):
     data = {
         'attr_name': current_attr_name if current_attr_name else '',
+        'max_level': current_max_level if current_max_level else '',
     }
     
     input_fields = {
-        'attr_name': {'label': "Attribute Name (e.g., max_lasers): ", 'rect': pygame.Rect(SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 50, 400, 40)},
+        'attr_name': {'label': "Attribute Name (e.g., max_lasers): ", 'rect': pygame.Rect(SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 - 50, 320, 40)},
+        'max_level': {'label': "Max Level (e.g., 5): " , 'rect': pygame.Rect(SCREEN_WIDTH // 2 + 50, SCREEN_HEIGHT // 2 - 50, 220, 40)}
     }
     
     active_field = 'attr_name'
@@ -266,6 +271,7 @@ while running:
                                 old_attr_name = skill.attr_name
                                 skill.attr_name = updated_data['attr_name']
                                 skill.text = updated_data['attr_name'].replace('_', ' ').title()
+                                skill.max_level = int(updated_data['max_level']) if updated_data['max_level'] else skill.max_level
                                 # Update skills_dict keys if attr_name changed
                                 if old_attr_name != skill.attr_name:
                                     del skills_dict[old_attr_name]

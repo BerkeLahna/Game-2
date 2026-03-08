@@ -15,14 +15,14 @@ hover_color = (0, 200, 0)  # Darker green when hovered
 
 
 class Skill:
-    def __init__(self, text, x, y, attr_name, level=0, visible = True, image = None, description = "", parent_attr_names=None, required_parent_level=1):
+    def __init__(self, text, x, y, attr_name, level=0, max_level=3,visible = True, image = None, description = "", parent_attr_names=None, required_parent_level=1):
         self.text = text
         self.rect = pygame.Rect(x, y, width, height)
         self.color = color
         self.hover_color = hover_color
         self.is_hovered = False
         self.level = level
-        self.max_level = 80
+        self.max_level = max_level
         self.visible = visible
         self.attr_name = attr_name  # Name of the attribute in globals.player
         self.image = image
@@ -106,7 +106,7 @@ class Skill:
         
 
         if self.level >= self.max_level and self.is_unlocked:
-            maxed_text = font.render("Maxed Out", True, (200, 0, 0)) # font global
+            maxed_text =text_font.render("Maxed Out", True, (200, 0, 0)) # font global
             screen.blit(maxed_text, (self.rect.centerx - maxed_text.get_width() // 2, self.rect.bottom + 5))
 
             
@@ -131,6 +131,7 @@ class Skill:
         if self.attr_name == "player_energy": return current * 1.1
         if self.attr_name == "laser_damage": return current + 1
         if self.attr_name == "player_movement_speed": return current * 1.1
+        if self.attr_name == "player_max_hp": return current + 1
         return current
 
 

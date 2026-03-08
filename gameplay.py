@@ -107,6 +107,7 @@ def game_over_screen(screen, font, player_pos, no_fuel = False ):
     return choice_menu(game_over_buttons,screen)
 
 def pause_screen(screen, font):
+    pygame.mixer.music.set_volume(0.1)
     pygame.mouse.set_visible(True)
     font = pygame.font.SysFont("8-Bit-Madness", 46)
     font.set_bold(True)
@@ -117,30 +118,34 @@ def pause_screen(screen, font):
     screen.blit(rect_gradient, ( globals.SCREEN_WIDTH /2 - 200, 0))
 
     pause_text = text_styling( (pause_text_rect,"Paused"), screen)
+
     return choice_menu(pause_menu_buttons,screen)
 
 def choice_menu(button_list, screen):
-        while True:
+    menu_clock = pygame.time.Clock() 
+    while True:
+       
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                for button in button_list:
+                    if button[0].collidepoint(mouse_x, mouse_y):
+                        pygame.mixer.music.set_volume(0.3)
+                        return button[1]
 
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    mouse_x, mouse_y = pygame.mouse.get_pos()
-                    for button in button_list:
-                        if button[0].collidepoint(mouse_x, mouse_y):
-                            return button[1]
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        for button in button_list:
+            if button[0].collidepoint(mouse_x,mouse_y):
+                button_draw(button, screen, hover = True)
+            else:
+                button_draw(button, screen)
 
-            mouse_x, mouse_y = pygame.mouse.get_pos()
-            for button in button_list:
-                if button[0].collidepoint(mouse_x,mouse_y):
-                    button_draw(button, screen, hover = True)
-                else:
-                    button_draw(button, screen)
-
-            pygame.display.update()
+        pygame.display.update()
+        menu_clock.tick(60)
 
 
 def game_over_result(screen, font, player_pos, no_fuel = False):
@@ -236,7 +241,7 @@ def gameplay_page(screen, WHITE, font):
     enemies.clear()
     globals.player_hp = globals.player_max_hp
     globals.player_energy = globals.player_max_energy
-    globals.money = 0
+    globals.money = 111110
     game_level = 1
 
     energy_font = pygame.font.Font(None, 18)
@@ -289,16 +294,45 @@ def gameplay_page(screen, WHITE, font):
 
             screen.blit(obstacle.image, (obstacle.rect.x, obstacle.rect.y))
 
-            health_bar_width = obstacle.rect.width
+            # FIX: Use a fixed width (50) instead of obstacle.rect.width
+            # Since you spawn them with 50,50 in generate_obstacles()
+            fixed_bar_width = 50 
             health_bar_height = 8
-            health_percentage = obstacle.hp / obstacle.max_hp
-            pygame.draw.rect(screen, (255, 0, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width, health_bar_height))
-            pygame.draw.rect(screen, (0, 255, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width * health_percentage, health_bar_height))
-            pygame.draw.rect(screen, (0, 0, 0), (obstacle.rect.x, obstacle.rect.y - health_bar_height - 5, health_bar_width, health_bar_height), 1)
+            health_percentage = max(0, obstacle.hp / obstacle.max_hp)
+            
+            # Center the bar relative to the obstacle's center
+            bar_x = obstacle.rect.centerx - (fixed_bar_width // 2)
+            bar_y = obstacle.rect.y - health_bar_height - 5
+
+            # Draw background (Red)
+            pygame.draw.rect(screen, (255, 0, 0), (bar_x, bar_y, fixed_bar_width, health_bar_height))
+            # Draw current health (Green)
+            pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, fixed_bar_width * health_percentage, health_bar_height))
+            # Draw border (Black)
+            pygame.draw.rect(screen, (0, 0, 0), (bar_x, bar_y, fixed_bar_width, health_bar_height), 1)
 
             if check_collision((player_x, player_y), player_radius, obstacle.rect):
-                game_over_result(screen, font, (player_x, player_y))
-                return
+                # Store the current HP values before they start changing
+                current_obstacle_hp = obstacle.hp
+                current_player_hp = globals.player_hp
+
+                # Obstacle takes damage equal to player's current HP
+                obstacle.hp -= current_player_hp
+                
+                # Player takes damage equal to obstacle's current HP
+                globals.player_hp -= current_obstacle_hp
+
+                if obstacle.hp <= 0:
+                    if obstacle not in meteors_to_remove:
+                        meteors_to_remove.append(obstacle)
+                    explosion_sound.play()
+
+                # Check for game over
+                if globals.player_hp <= 0:
+                    game_over_result(screen, font, (player_x, player_y))
+                    return
+                
+                
 
         for meteor in meteors_to_remove:
             if meteor in obstacles:
@@ -312,8 +346,14 @@ def gameplay_page(screen, WHITE, font):
             enemy.draw(screen)
 
             if check_collision((player_x, player_y), player_radius, enemy.rect):
-                game_over_result(screen, font, (player_x, player_y))
-                return
+                if enemy.hp > globals.player_hp:
+                    enemy.hp -= globals.player_hp
+                    game_over_result(screen, font, (player_x, player_y))
+                    return
+                else:
+                    globals.player_hp -= enemy.hp
+                   
+                
 
             if enemy.hp <= 0:
                 enemies_to_remove.append(enemy)
@@ -437,7 +477,18 @@ def gameplay_page(screen, WHITE, font):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
+                    # 1. Open the pause menu
                     pause_screen_result(screen, font, "Paused")
+                    
+                    # 2. CRITICAL FIX: Reset timers after returning from pause
+                    # This prevents the game from "jumping" forward
+                    current_time = time.time()
+                    last_obstacle_time = current_time
+                    last_enemy_spawn_time = current_time
+                    
+                    # 3. Clear the clock so the next 'dt' isn't massive
+                    clock.tick() 
+
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()

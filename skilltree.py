@@ -63,9 +63,10 @@ def load_buttons():
                     x = int(parts[1])
                     y = int(parts[2])
                     level = int(parts[3])
-                    visibility = parts[4].lower() == 'true'
+                    max_level = int(parts[4]) 
+                    visibility = parts[5].lower() == 'true'
                     # New: parent_attr_names string (optional)
-                    parent_names_str = parts[5].strip("'\"") if len(parts) > 5 else ""
+                    parent_names_str = parts[6].strip("'\"") if len(parts) > 5 else ""
 
                     attr_name = raw_name # Assuming raw_name is the attr_name
                     
@@ -77,7 +78,7 @@ def load_buttons():
                     
                     # You might want to add required_parent_level to your file too if it varies
                     loaded_buttons.append(Skill(text=display_text, x=x, y=y,
-                                                attr_name=attr_name, level=level,
+                                                attr_name=attr_name, level=level, max_level=max_level,
                                                 visible=visibility, image=img, description=desc,
                                                 parent_attr_names=parent_names_str,
                                                 required_parent_level=1)) # Default to 1

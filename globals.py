@@ -1,8 +1,8 @@
 import math
 
 max_lasers = 1
-laser_damage = 40
-player_max_energy = 6000
+laser_damage = 40/40
+player_max_energy = 1000
 player_energy = player_max_energy
 player_movement_speed = 5
 energy_depletion_rate = 1

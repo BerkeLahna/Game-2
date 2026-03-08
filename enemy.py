@@ -31,7 +31,7 @@ class Enemy(GameObject):
 
         base_width = 70
         base_height = 70
-        base_hp = 50
+        base_hp = 10
         base_speed = 100
 
         self.level = level

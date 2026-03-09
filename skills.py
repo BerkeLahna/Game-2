@@ -127,7 +127,8 @@ class Skill:
     def multiplier1(self, current):
         # (Your existing multiplier1 logic)
         if self.attr_name == "energy_depletion_rate": return current * 0.9
-        if self.attr_name == "max_lasers": return current + 5
+        if self.attr_name == "max_lasers": return current + 1
+        if self.attr_name == "player_laser_max_range": return current + 100
         if self.attr_name == "player_energy": return current * 1.1
         if self.attr_name == "laser_damage": return current + 1
         if self.attr_name == "player_movement_speed": return current * 1.1
@@ -145,6 +146,8 @@ class Skill:
             return "Next Lvl: Energy use -10%"
         elif self.attr_name == "max_lasers":
             return "Next Lvl: Max lasers +1"
+        elif self.attr_name == "player_laser_max_range":
+            return "Next Lvl: Laser range + 10%"
         elif self.attr_name == "player_energy":
             return "Next Lvl: Max energy +10%"
         elif self.attr_name == "laser_damage":

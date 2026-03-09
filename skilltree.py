@@ -1,6 +1,7 @@
 import pygame
 import sys
 import math
+import assets
 import globals
 from skills import Skill
 # from buttons import Skills
@@ -148,7 +149,7 @@ def skill_tree_page(screen, WHITE, main_font, gameplay_page_func):
                             break # Process only one skill click
 
                     if play_button.collidepoint(mouse_x, mouse_y): # play_button logic
-                        gameplay_page_func(screen, WHITE, main_font)
+                        gameplay_page_func(screen, WHITE, main_font, assets.background_image)
                         running = False
 
         # --- Drawing ---

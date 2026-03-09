@@ -8,7 +8,7 @@ import globals # Assuming globals.py exists for SCREEN_WIDTH, SCREEN_HEIGHT
 # Initialize Pygame
 pygame.init()
 
-background_image = pygame.image.load('Images/high_quality_futuristic_space_ (2).jpeg')  # Ensure you have this image in the same folder or provide the correct path
+background_image = pygame.image.load(assets.resource_path('Images/high_quality_futuristic_space_ (2).jpeg'))  # Ensure you have this image in the same folder or provide the correct path
 background_image = pygame.transform.scale(background_image, (globals.SCREEN_WIDTH, globals.SCREEN_HEIGHT))  # Scale it to fit the screen
 
 # Constants
@@ -32,9 +32,9 @@ tooltip_font = pygame.font.Font(None, 22) # Font for tooltip display
 # --- Skill Images and Descriptions (copied from skilltree.py for editor's self-containment) ---
 try:
     skill_images = {
-        1 : pygame.transform.scale(pygame.image.load('Images/skill-1.jpeg'), (SKILL_WIDTH, SKILL_HEIGHT)),
-        2 : pygame.transform.scale(pygame.image.load('Images/skill-2.jpeg'), (SKILL_WIDTH, SKILL_HEIGHT)),
-        3 : pygame.transform.scale(pygame.image.load('Images/skill-3.jpeg'), (SKILL_WIDTH, SKILL_HEIGHT))
+        1 : pygame.transform.scale(pygame.image.load(assets.resource_path('Images/skill-1.jpeg')), (SKILL_WIDTH, SKILL_HEIGHT)),
+        2 : pygame.transform.scale(pygame.image.load(assets.resource_path('Images/skill-2.jpeg')), (SKILL_WIDTH, SKILL_HEIGHT)),
+        3 : pygame.transform.scale(pygame.image.load(assets.resource_path('Images/skill-3.jpeg')), (SKILL_WIDTH, SKILL_HEIGHT))
     }
 except pygame.error as e:
     print(f"Warning: Could not load skill images. Ensure Images/Skill-1.png and Images/Skill-2.png exist. Error: {e}")

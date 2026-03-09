@@ -2,13 +2,14 @@ import pygame
 import random
 import math
 import time
+import assets
 from game_object import GameObject, get_offscreen_spawn_and_direction
 from enemy_laser import EnemyLaser # Explicitly import EnemyLaser
 import globals
 
 # Load enemy image (ensure this path is correct)
 try:
-    enemy_image = pygame.image.load('Images/Ships/ship-6.png')
+    enemy_image = pygame.image.load(assets.resource_path('Images/Ships/ship-6.png'))
     enemy_image = pygame.transform.scale(enemy_image, (60, 60))
 except pygame.error:
     print("Warning: enemy_image (ship-6.png) not found. Using a placeholder.")
@@ -16,7 +17,7 @@ except pygame.error:
     pygame.draw.rect(enemy_image, (100, 50, 150), enemy_image.get_rect(), border_radius=5) # Placeholder
 
 try:
-    enemy_boss_image = pygame.image.load('Images/Ships/ship-5.png')
+    enemy_boss_image = pygame.image.load(assets.resource_path('Images/Ships/ship-5.png'))
     enemy_boss_image = pygame.transform.scale(enemy_boss_image, (120, 120))
 except pygame.error:
     print("Warning: enemy_boss_image (enemy_boss.png) not found. Using a placeholder.")

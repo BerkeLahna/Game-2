@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+import assets
 
 # ------------------------- COLORS -------------------------
 WHITE = (255, 255, 255)
@@ -16,9 +17,9 @@ def init_buttons():
     main_menu_font.set_bold(True)
 
 # ------------------------- IMAGES -------------------------
-button_image = pygame.transform.scale(pygame.image.load("Images/button.png"), (300, 75))
-button_hover_image = pygame.transform.scale(pygame.image.load("Images/button-hover.png"), (300, 75))
-not_button_image = pygame.image.load("Images/wp10105509.jpg")
+button_image = pygame.transform.scale(pygame.image.load(assets.resource_path("Images/button.png")), (300, 75))
+button_hover_image = pygame.transform.scale(pygame.image.load(assets.resource_path("Images/button-hover.png")), (300, 75))
+not_button_image = pygame.image.load(assets.resource_path("Images/wp10105509.jpg"))
 
 # ------------------------- BUTTONS -------------------------
 def create_button(text, x, y, width, height):

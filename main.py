@@ -25,7 +25,7 @@ WHITE = (255, 255, 255)
 
 # --- MUSIC ---
 try:
-    pygame.mixer.music.load('Images/lofi.mp3')
+    pygame.mixer.music.load(assets.resource_path('Images/lofi.mp3'))
     pygame.mixer.music.set_volume(0.3)
     pygame.mixer.music.play(-1)
 except pygame.error as e:

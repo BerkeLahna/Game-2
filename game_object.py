@@ -2,16 +2,7 @@ import pygame
 import math
 import random
 import globals # Assuming globals.py exists and has SCREEN_WIDTH, SCREEN_HEIGHT
-
-# Meteorite images are now defined here, as this is the GameObject base for them
-meteorite_images = {
-    1 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor1.png'), (50,50)),
-    2 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor2.png'), (50,50)),
-    3 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor3.png'), (50,50)),
-    4 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor4.png'), (50,50)),
-    5 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor5.png'), (50,50)),
-    6 : pygame.transform.scale(pygame.image.load('Images/Meteors/meteor6.png'), (50,50))
-}
+import assets
 
 # Utility function for getting off-screen spawn points and speeds
 def get_offscreen_spawn_and_direction(width, height):

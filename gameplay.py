@@ -6,7 +6,7 @@ import sys
 
 from enemy import Enemy
 from laser import Laser
-from game_object import GameObject, get_offscreen_spawn_and_direction, meteorite_images
+from game_object import GameObject, get_offscreen_spawn_and_direction
 from player import player_move
 import assets
 from ui import draw_ui_bar
@@ -22,7 +22,7 @@ def generate_obstacles(count):
     """Generate a list of meteors (obstacles) with random positions and stats."""
     generated = []
     for _ in range(count):
-        img = random.choice(list(meteorite_images.values()))
+        img = random.choice(list(assets.meteorite_images.values()))
         width, height = img.get_size()
         x, y, x_speed, y_speed = get_offscreen_spawn_and_direction(width, height)
         hp = random.randint(1, 3)

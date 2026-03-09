@@ -10,6 +10,7 @@ from enemy import Enemy
 from enemy_laser import EnemyLaser
 from laser import Laser
 from game_object import GameObject, get_offscreen_spawn_and_direction, meteorite_images
+from resource_path import resource_path
 
 # --- INITIALIZATION ---
 pygame.init()
@@ -18,17 +19,17 @@ pygame.mixer.init()
 # --- ASSET LOADING (LOADED ONCE FOR PERFORMANCE) ---
 # Prevents memory leaks by not loading in the main loop
 explosion_images = {
-    i: pygame.transform.scale(pygame.image.load(f'Images/Explosion/explosion{i if i != 5 else "5_scuffed"}.png'), (60, 60))
+    i: pygame.transform.scale(pygame.image.load(resource_path(f'Images/Explosion/explosion{i if i != 5 else "5_scuffed"}.png')), (60, 60))
     for i in range(1, 8)
 }
 
-explosion_sound = pygame.mixer.Sound("Images/Explosion/explosion_alternate1.mp3")
+explosion_sound = pygame.mixer.Sound(resource_path("Images/Explosion/explosion_alternate1.mp3"))
 
 # UI Elements with Precision Scaling
 try:
     # --- LOAD PNGs (already set up for dynamic use) ---
-    raw_hp_bar = pygame.image.load(r'Images\hp_bar_full.png').convert_alpha()
-    raw_energy_bar = pygame.image.load(r'Images\energy_bar_full.png').convert_alpha()
+    raw_hp_bar = pygame.image.load(resource_path(r'Images\hp_bar_full.png')).convert_alpha()
+    raw_energy_bar = pygame.image.load(resource_path(r'Images\energy_bar_full.png')).convert_alpha()
     
     ui_scale = 0.6
     hp_bar_img = pygame.transform.scale(raw_hp_bar, (int(raw_hp_bar.get_width() * ui_scale), int(raw_hp_bar.get_height() * ui_scale)))
@@ -38,11 +39,11 @@ except Exception as e:
     hp_bar_img = pygame.Surface((100, 20))
     energy_bar_img = pygame.Surface((100, 20))
 
-background_image = pygame.image.load('Images/menu (1).jpeg')
+background_image = pygame.image.load(resource_path('Images/menu (1).jpeg'))
 background_image = pygame.transform.scale(background_image, (1920, 1080))
 
 # Player Image & Circular Masking
-raw_player_image = pygame.image.load('Images/Ships/ship-2.png').convert_alpha()
+raw_player_image = pygame.image.load(resource_path('Images/Ships/ship-2.png')).convert_alpha()
 raw_player_image = pygame.transform.scale(raw_player_image, (globals.player_size, globals.player_size))
 original_player_image = pygame.Surface((globals.player_size, globals.player_size), pygame.SRCALPHA)
 original_player_image.blit(raw_player_image, (0, 0))

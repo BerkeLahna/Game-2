@@ -1,6 +1,7 @@
 import pygame
 import numpy as np
- 
+from resource_path import resource_path
+
  
 # Colors
 WHITE = (255, 255, 255)
@@ -11,12 +12,12 @@ BUTTON_TEXT_COLOR = (90, 115, 255, 0.62*255) # Black text for buttons
 main_menu_font = pygame.font.SysFont("8-Bit-Madness", 46)
 main_menu_font.set_bold(True)
 
-button_image = pygame.image.load('Images/button.png')  
+button_image = pygame.image.load(resource_path('Images/button.png'))  
 button_image = pygame.transform.scale(button_image, (300, 75))  # Scale it to fit the screen
-not_button_image = pygame.image.load('Images/wp10105509.jpg')  
+not_button_image = pygame.image.load(resource_path('Images/wp10105509.jpg'))  
 
 
-button_hover_image = pygame.image.load('Images/button-hover.png')  
+button_hover_image = pygame.image.load(resource_path('Images/button-hover.png'))  
 button_hover_image = pygame.transform.scale(button_hover_image, (300, 75))  # Scale it to fit the screen
 
 

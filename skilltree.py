@@ -3,6 +3,7 @@ import sys
 import math
 import globals
 from skills import Skill
+from resource_path import resource_path
 # from buttons import Skills
 
 background_image = pygame.image.load('Images/high_quality_futuristic_space_ (2).jpeg')  # Ensure you have this image in the same folder or provide the correct path
@@ -53,7 +54,7 @@ def load_buttons():
         "player_movement_speed": "Enhances ship speed."
     }
     try:
-        with open(assets.resource_path('buttons.txt'), "r") as file:
+        with open(resource_path('Images/buttons.txt'), "r") as file:
             for line_num, line in enumerate(file):
                 try:
                     content = line.strip().split('(')[1].split(')')[0]

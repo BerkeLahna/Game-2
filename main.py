@@ -2,6 +2,7 @@ import pygame
 import sys
 from gameplay import gameplay_page
 from buttons import *
+from resource_path import resource_path
 
 # Initialize Pygame
 pygame.init()
@@ -11,18 +12,18 @@ WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Game with Collisions and Skill Tree")
 
-background_image = pygame.image.load('Images/menu (1).jpeg')  # Ensure you have this image in the same folder or provide the correct path
+background_image = pygame.image.load(resource_path('Images/menu (1).jpeg'))  # Ensure you have this image in the same folder or provide the correct path
 background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))  # Scale it to fit the screen
 transparent_rect = pygame.Surface((600, 300), pygame.SRCALPHA)
 background_image.set_colorkey((0, 0, 0))  # Set transparency for black pixels (if needed)
 background_image.blit(transparent_rect, (650, 175), special_flags=pygame.BLEND_RGBA_MIN)  
 
-logo_background =  pygame.image.load("Images/wp10105509.jpg").convert()
+logo_background =  pygame.image.load(resource_path("Images/wp10105509.jpg")).convert()
 logo_background = pygame.transform.scale(logo_background, (WIDTH, HEIGHT))  # Scale if necessary
 
 # Load background music
 try:
-    pygame.mixer.music.load('Images/lofi.mp3') 
+    pygame.mixer.music.load(resource_path('Images/lofi.mp3')) 
     pygame.mixer.music.set_volume(0.3) # Set volume (0.0 to 1.0)
     pygame.mixer.music.play(-1) # Play the music indefinitely (-1 means loop forever)
 except pygame.error as e:
@@ -30,7 +31,7 @@ except pygame.error as e:
 
 
 
-menu_logo = pygame.image.load('Images/menu-logo-test.png')  
+menu_logo = pygame.image.load(resource_path('Images/menu-logo-test.png'))  
 
 
 buttons = []

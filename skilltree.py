@@ -6,12 +6,12 @@ from skills import Skill
 from resource_path import resource_path
 # from buttons import Skills
 
-background_image = pygame.image.load('Images/high_quality_futuristic_space_ (2).jpeg')  # Ensure you have this image in the same folder or provide the correct path
+background_image = pygame.image.load(resource_path('Images/high_quality_futuristic_space_ (2).jpeg'))  # Ensure you have this image in the same folder or provide the correct path
 background_image = pygame.transform.scale(background_image, (globals.SCREEN_WIDTH, globals.SCREEN_HEIGHT))  # Scale it to fit the screen
 
 skill_images = {
-    1 : pygame.transform.scale(pygame.image.load('Images/Skill-1.jpeg'), (80,80)),
-    2 : pygame.transform.scale(pygame.image.load('Images/Skill - 2.jpeg'), (80,80))
+    1 : pygame.transform.scale(pygame.image.load(resource_path('Images/Skill-1.jpeg')), (80,80)),
+    2 : pygame.transform.scale(pygame.image.load(resource_path('Images/Skill - 2.jpeg')), (80,80))
    
 }
 

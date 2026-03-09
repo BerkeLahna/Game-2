@@ -2,6 +2,7 @@ import pygame
 import globals
 import sys
 import os
+import options
 
 explosion_images = None
 explosion_sound = None
@@ -12,6 +13,7 @@ player_image = None
 logo_background = None
 menu_logo = None
 meteorite_images = None
+
 
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and PyInstaller."""
@@ -33,6 +35,7 @@ def load_assets():
     global logo_background
     global menu_logo
     global meteorite_images
+    
     # Meteorite images are now defined here, as this is the GameObject base for them
     meteorite_images = {
         1 : pygame.transform.scale(pygame.image.load( resource_path('Images/Meteors/meteor1.png')), (50,50)),
@@ -43,6 +46,15 @@ def load_assets():
         6 : pygame.transform.scale(pygame.image.load( resource_path('Images/Meteors/meteor6.png')), (50,50))
         }
 
+    
+    # --- MUSIC ---
+    try:
+        pygame.mixer.music.load(resource_path('Images/lofi.mp3'))
+        # CHANGE THIS LINE: Access the settings instance
+        pygame.mixer.music.set_volume(options.settings.music_volume) 
+        pygame.mixer.music.play(-1)
+    except pygame.error as e:
+        print(f"Music error: {e}")
 
 
     # --- EXPLOSIONS ---
@@ -109,3 +121,8 @@ def load_assets():
         globals.player_size//2
     )
     player_image.blit(mask, (0,0), special_flags=pygame.BLEND_RGBA_MULT)
+    
+
+def sync_volume():
+    """Call this when you change the slider in the options menu"""
+    pygame.mixer.music.set_volume(options.settings.music_volume)

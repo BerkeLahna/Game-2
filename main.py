@@ -3,6 +3,7 @@ import sys
 from gameplay import gameplay_page
 import buttons
 import assets
+from menus import *
 
 # --- INIT PYGAME ---
 pygame.init()
@@ -21,15 +22,6 @@ WHITE = (255, 255, 255)
 
 
 
-
-
-# --- MUSIC ---
-try:
-    pygame.mixer.music.load(assets.resource_path('Images/lofi.mp3'))
-    pygame.mixer.music.set_volume(0.3)
-    pygame.mixer.music.play(-1)
-except pygame.error as e:
-    print(f"Music error: {e}")
 
 # --- MAIN MENU FUNCTION ---
 def main_menu():
@@ -78,7 +70,7 @@ def main_menu():
                     pygame.quit()
                     sys.exit()
                 elif options_button[0].collidepoint(mouse_x, mouse_y):
-                    print("Options clicked")
+                    menus.options_menu(screen)
 
         pygame.display.update()
         clock.tick(60)

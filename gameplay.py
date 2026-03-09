@@ -42,114 +42,8 @@ def check_collision(circle_pos, circle_radius, rect):
     dy = cy - closest_y
     return dx*dx + dy*dy <= circle_radius * circle_radius
 
-# --- NEW MENU & RESULT FUNCTIONS ---
 
-def choice_menu(button_list, screen):
-    menu_clock = pygame.time.Clock() 
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_x, mouse_y = pygame.mouse.get_pos()
-                for button in button_list:
-                    if button[0].collidepoint(mouse_x, mouse_y):
-                        pygame.mixer.music.set_volume(0.3)
-                        return button[1]
-
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        for button in button_list:
-            hover = button[0].collidepoint(mouse_x, mouse_y)
-            button_draw(button, screen, hover=hover)
-
-        pygame.display.update()
-        menu_clock.tick(60)
-
-def game_over_screen(screen, font, player_pos, no_fuel=False):
-    pygame.mouse.set_visible(True)
-    fuel_empty_rect = pygame.Rect(globals.SCREEN_WIDTH / 2 - 145, 360, 300, 75)
-    game_over_rect = pygame.Rect(globals.SCREEN_WIDTH / 2 - 145, 300, 300, 75)
-
-    if not no_fuel:
-        pygame.draw.circle(screen, (255, 120, 51), player_pos, 30)
-        assets.explosion_sound.play()
-        explosion_delay = 100
-        last_explosion_time = pygame.time.get_ticks()
-        
-        # Iterate through explosion frames
-        for i in range(1, len(assets.explosion_images) + 1):
-            explosion_image = assets.explosion_images[i]
-            x, y = player_pos
-            screen.blit(explosion_image, (x - 30, y - 30))
-            pygame.display.update(x - 30, y - 30, 60, 60)
-            pygame.time.delay(explosion_delay)
-
-    top = (100, 180, 220, 55)
-    bottom = (30, 60, 90, 55)
-    rect_gradient = create_vertical_color_gradient((400, 1080), top, bottom)
-    screen.blit(rect_gradient, (globals.SCREEN_WIDTH / 2 - 200, 0))
-
-    text_styling((game_over_rect, "Game Over"), screen)
-    if no_fuel:
-        text_styling((fuel_empty_rect, "Ran Out Of Fuel"), screen)
-
-    return choice_menu(game_over_buttons, screen)
-
-def game_over_result(screen, font, player_pos, no_fuel=False):
-    result = game_over_screen(screen, font, player_pos, no_fuel)
-    obstacles.clear()
-    enemies.clear()
-
-    if result == "Skill Tree":
-        skill_tree_page(screen, (255, 255, 255), font, gameplay_page)
-    elif result == "Restart":
-        globals.player_hp = globals.player_max_hp
-        globals.player_energy = globals.player_max_energy
-        globals.money = 0
-        gameplay_page(screen, (255, 255, 255), font, assets.background_image)
-    elif result == "Quit":
-        pygame.quit()
-        sys.exit()
-
-def pause_screen(screen, font):
-    pygame.mixer.music.set_volume(0.1)
-    pygame.mouse.set_visible(True)
-    # Re-init font for specific style if needed
-    p_font = pygame.font.SysFont("8-Bit-Madness", 46)
-    p_font.set_bold(True)
-    
-    pause_text_rect = pygame.Rect(globals.SCREEN_WIDTH / 2 - 145, 300, 300, 75)
-    top = (100, 180, 220, 55)
-    bottom = (30, 60, 90, 55)
-    rect_gradient = create_vertical_color_gradient((400, 1080), top, bottom)
-    screen.blit(rect_gradient, (globals.SCREEN_WIDTH / 2 - 200, 0))
-
-    text_styling((pause_text_rect, "Paused"), screen)
-    return choice_menu(pause_menu_buttons, screen)
-
-def pause_screen_result(screen, font):
-    pause_start = time.time()  # Record when we paused
-    result = pause_screen(screen, font)
-    pause_end = time.time()    # Record when we unpaused
-    
-    pause_duration = pause_end - pause_start # Calculate total time spent paused
-
-    if result == "Continue":
-        pygame.mouse.set_visible(False)
-        return pause_duration 
-    if result == "Skill Tree":
-        skill_tree_page(screen, (255, 255, 255), font, gameplay_page)
-        return
-    elif result == "Restart":
-        globals.player_hp = globals.player_max_hp
-        globals.player_energy = globals.player_max_energy
-        globals.money = 0
-        gameplay_page(screen, (255, 255, 255), font, assets.background_image)
-    elif result == "Quit":
-        pygame.quit()
-        sys.exit()
 
 # --- MAIN GAMEPLAY LOOP ---
 
@@ -294,20 +188,22 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
         money_txt = font.render(f"Money: {round(globals.money, 2)}", True, (255, 255, 255))
         screen.blit(money_txt, (25, 80 + assets.hp_bar_img.get_height() + 5))
 
+        # gameplay.py
+
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                # 1. Run the pause menu and get the time spent inside it
+                # This call now captures time from Pause AND any nested Options calls
                 p_offset = pause_screen_result(screen, font)
                 
-                # 2. If the user chose "Continue" (which returns the float duration)
                 if isinstance(p_offset, (int, float)):
-                    # Shift the timestamps forward so the "wait" time remains the same
+                    # Shift all time-based variables forward by the duration of the pause
                     last_obstacle_time += p_offset
                     last_enemy_spawn_time += p_offset
                     gameplay_page.last_player_laser_time += p_offset
                     
-                    # 3. CRITICAL: Reset the pygame clock so 'dt' isn't huge on the next frame
-                    clock.tick() 
+                    # Reset the clock so the very next 'dt' is near 0, not the pause duration
+                    clock.tick()
+             
                 
             if event.type == pygame.QUIT:
                 pygame.quit()

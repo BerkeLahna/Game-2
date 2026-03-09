@@ -156,7 +156,6 @@ def game_over_result(screen, font, player_pos, no_fuel=False):
     elif result == "Restart":
         globals.player_hp = globals.player_max_hp
         globals.player_energy = globals.player_max_energy
-        globals.money = 0
         gameplay_page(screen, (255, 255, 255), font, assets.background_image)
     elif result == "Quit":
         pygame.quit()
@@ -231,7 +230,6 @@ def pause_screen_result(screen, font):
     if result == "Restart":
         globals.player_hp = globals.player_max_hp
         globals.player_energy = globals.player_max_energy
-        globals.money = 0
         gameplay_page(screen, (255, 255, 255), font, assets.background_image)
         return 0
         

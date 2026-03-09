@@ -37,15 +37,21 @@ def get_offscreen_spawn_and_direction(width, height):
 # GameObject class to represent obstacles with health
 class GameObject:
     def __init__(self, x, y, width, height, hp, x_speed, y_speed, image=None):
-        self.rect = pygame.Rect(x, y, width, height)
+        self.original_image = image  
+        self.image = image 
+        
+        if self.image:
+            self.rect = self.image.get_rect(center=(x, y))
+        else:
+            self.rect = pygame.Rect(x, y, width, height)
+            
+        self.rect = self.rect.inflate(-20, -20) 
         self.hp = hp
-        self.max_hp = hp  # Store max HP for health bar
-        self.x_speed = x_speed  # Speed of the obstacle in pixels per second
-        self.y_speed = y_speed  # Speed of the obstacle in pixels per second
-        self.original_image = image  # Store the original image for rotation
-        self.image = image # Current image (will be rotated)
-        self.angle = random.uniform(0, 360)  # Initial random angle
-        self.rotation_speed = random.uniform(-100, 100)  # Random rotation speed in degrees per second
+        self.max_hp = hp
+        self.x_speed = x_speed
+        self.y_speed = y_speed
+        self.angle = random.uniform(0, 360)
+        self.rotation_speed = random.uniform(-100, 100)
 
 
     def move(self, dt):
@@ -68,16 +74,15 @@ class GameObject:
 
 
     def reset_position(self):
-        # Reset position and speed using the utility function
         new_x, new_y, new_x_speed, new_y_speed = get_offscreen_spawn_and_direction(self.rect.width, self.rect.height)
-        self.rect.x = new_x
-        self.rect.y = new_y
+        # Update position
+        self.rect.center = (new_x, new_y) 
         self.x_speed = new_x_speed
         self.y_speed = new_y_speed
-        self.hp = self.max_hp  # Reset health to max HP
-        self.angle = random.uniform(0, 360) # Reset angle
-        self.rotation_speed = random.uniform(-100, 100) # Reset rotation speed
+        self.hp = self.max_hp
+        self.angle = random.uniform(0, 360)
+        
         if self.original_image:
             self.image = pygame.transform.rotate(self.original_image, self.angle)
-            self.rect = self.image.get_rect(center=(self.rect.x + self.rect.width // 2, self.rect.y + self.rect.height // 2))
-
+            # Re-center the rect after rotation
+            self.rect = self.image.get_rect(center=self.rect.center)

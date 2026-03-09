@@ -33,17 +33,30 @@ def spawn_enemies(level, count):
     """Spawn a batch of enemies for the given level."""
     return [Enemy(level) for _ in range(count)]
 
+
+
 def check_collision(circle_pos, circle_radius, rect):
-    """Circle-rectangle collision detection."""
-    cx, cy = circle_pos
-    closest_x = max(rect.left, min(cx, rect.right))
-    closest_y = max(rect.top, min(cy, rect.bottom))
-    dx = cx - closest_x
-    dy = cy - closest_y
-    return dx*dx + dy*dy <= circle_radius * circle_radius
 
+    # 1. Scale the player's effective hit radius
+    scaled_radius = circle_radius * 0.3
+    
+    # 2. Scale the object's (Enemy or Meteor) hitbox
+    # inflate() with negative values shrinks the rectangle toward its center
+    shrink_x = -(rect.width * 0.1)
+    shrink_y = -(rect.height * 0.1)
+    scaled_rect = rect.inflate(shrink_x, shrink_y)
 
+    # 3. Find the closest point on the scaled rectangle to the center of the circle
+    closest_x = max(scaled_rect.left, min(circle_pos[0], scaled_rect.right))
+    closest_y = max(scaled_rect.top, min(circle_pos[1], scaled_rect.bottom))
 
+    # 4. Calculate distance from circle center to this closest point
+    dx = circle_pos[0] - closest_x
+    dy = circle_pos[1] - closest_y
+
+    # 5. Collision occurs if distance squared is less than scaled radius squared
+    distance_squared = (dx ** 2) + (dy ** 2)
+    return distance_squared < (scaled_radius ** 2)
 
 # --- MAIN GAMEPLAY LOOP ---
 
@@ -77,7 +90,7 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
         if current_time - last_obstacle_time >= obstacle_generation_interval:
             obstacles.extend(generate_obstacles(3))
             last_obstacle_time = current_time
-            obstacle_generation_interval = random.uniform(2, 5)
+            obstacle_generation_interval = random.uniform(1, 4)
 
         if current_time - last_enemy_spawn_time >= enemy_spawn_interval:
             enemies.extend(spawn_enemies(game_level, 1))
@@ -109,18 +122,42 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
 
         # --- 2. UPDATE & FILTER ENEMIES ---
         enemies = [en for en in enemies if en.hp > 0]
-        
+
         for enemy in enemies:
             enemy.update(dt, (player_x, player_y), player_radius)
             enemy.draw(screen)
             
+            # Existing collision check for the enemy body
             if check_collision((player_x, player_y), player_radius, enemy.rect):
                 assets.explosion_sound.play()
                 if enemy.hp > globals.player_hp:
                     game_over_result(screen, font, (player_x, player_y))
                     return
                 globals.player_hp -= enemy.hp
-                enemy.hp = 0 # Mark for removal
+                enemy.hp = 0 
+
+            # --- Check collision for each laser fired by this enemy ---
+            for laser in enemy.lasers:
+                if laser.active and check_collision((player_x, player_y), player_radius, laser.rect):
+                    # 1. Apply damage
+                    damage_to_apply = laser.damage_per_second * dt
+                    globals.player_hp -= damage_to_apply
+                    
+                    # 2. Play a quieter, shorter version of the explosion sound
+                    # We use set_volume (0.0 to 1.0) to make it quieter
+                    assets.explosion_sound.set_volume(0.2) 
+                    hit_channel = assets.explosion_sound.play()
+                    
+                    # 3. If the sound started playing, schedule it to stop after 150ms
+                    if hit_channel:
+                        # pygame.time.set_timer or a simple check can work, 
+                        # but for a quick "hit" feel, we stop it shortly after
+                        pygame.time.delay(10) # Optional: slight delay if needed, 
+                                            # but usually, fadeout is better:
+                        assets.explosion_sound.fadeout(150) 
+                    
+                    # 4. Deactivate the laser
+                    laser.active = False
 
         # Update Enemies
         enemies_to_remove = []

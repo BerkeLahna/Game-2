@@ -54,7 +54,7 @@ def load_buttons():
         "player_movement_speed": "Enhances ship speed."
     }
     try:
-        with open(assets.resource_path('buttons.txt'), "r") as file:
+        with open(assets.resource_path('Images/buttons.txt'), "r") as file:
             for line_num, line in enumerate(file):
                 try:
                     content = line.strip().split('(')[1].split(')')[0]

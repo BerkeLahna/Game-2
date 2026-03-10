@@ -1,37 +1,10 @@
 import pygame
 import math
 import random
-import globals # Assuming globals.py exists and has SCREEN_WIDTH, SCREEN_HEIGHT
+import globals 
 import assets
 
-# Utility function for getting off-screen spawn points and speeds
-def get_offscreen_spawn_and_direction(width, height):
-    direction = random.choice(['left', 'right', 'top', 'bottom'])
-    x, y = 0, 0
-    # Speeds in pixels per second
-    x_speed, y_speed = 0, 0
 
-    if direction == 'left':
-        x = -width
-        y = random.randint(0, globals.SCREEN_HEIGHT - height)
-        x_speed = random.uniform(50, 150) # Speed towards right
-        y_speed = random.uniform(-50, 50) # Vertical drift
-    elif direction == 'right':
-        x = globals.SCREEN_WIDTH
-        y = random.randint(0, globals.SCREEN_HEIGHT - height)
-        x_speed = random.uniform(-150, -50) # Speed towards left
-        y_speed = random.uniform(-50, 50) # Vertical drift
-    elif direction == 'top':
-        x = random.randint(0, globals.SCREEN_WIDTH - width)
-        y = -height
-        x_speed = random.uniform(-50, 50) # Horizontal drift
-        y_speed = random.uniform(50, 150) # Speed downwards
-    elif direction == 'bottom':
-        x = random.randint(0, globals.SCREEN_WIDTH - width)
-        y = globals.SCREEN_HEIGHT
-        x_speed = random.uniform(-50, 50) # Horizontal drift
-        y_speed = random.uniform(-150, -50) # Speed upwards
-    return x, y, x_speed, y_speed
 
 
 # GameObject class to represent obstacles with health
@@ -52,29 +25,61 @@ class GameObject:
         self.y_speed = y_speed
         self.angle = random.uniform(0, 360)
         self.rotation_speed = random.uniform(-100, 100)
+        self.is_exploding = False
+        self.explosion_timer = 0
+        self.explosion_duration = 0.5 
 
+    def take_damage(self, amount):
+        """Standard way to apply damage and check for death."""
+        if not self.is_exploding:
+            self.hp -= amount
+            if self.hp <= 0:
+                self.trigger_explosion()
+
+    def trigger_explosion(self):
+        self.is_exploding = True
+        self.hp = 0
+        assets.explosion_sound.play() # Play sound once upon death
+
+    @property
+    def should_remove(self):
+        """Replaces 'is_dead' to account for the animation time."""
+        return self.hp <= 0 and not self.is_exploding
 
     def move(self, dt):
-        self.rect.x += self.x_speed * dt  # Move the obstacle horizontally
-        self.rect.y += self.y_speed * dt  # Move the obstacle vertically
+        self.rect.x += self.x_speed * dt 
+        self.rect.y += self.y_speed * dt  
 
-        # Update the angle and rotate the image for meteors
-        if self.original_image: # Only rotate if there's an image
+        if self.original_image: 
             self.angle += self.rotation_speed * dt
             self.image = pygame.transform.rotate(self.original_image, self.angle)
-            self.rect = self.image.get_rect(center=self.rect.center) # Update rect to keep center
+            self.rect = self.image.get_rect(center=self.rect.center) 
 
-        # Check if the obstacle is out of view and reset it to a random off-screen position
-        # Added a buffer of 100 pixels to ensure they are fully off-screen
+ 
         if self.rect.x + self.rect.width < -100 or self.rect.x > globals.SCREEN_WIDTH + 100 or \
            self.rect.y + self.rect.height < -100 or self.rect.y > globals.SCREEN_HEIGHT + 100:
             self.reset_position()
-            return True # Indicate that the object was reset
-        return False # Indicate that the object is still on-screen
+            return True 
+        return False
 
-
+    def draw(self, screen, dt):
+        if self.is_exploding:
+            self.explosion_timer += dt
+            explosion_radius = int((self.explosion_timer / self.explosion_duration) * self.rect.width)
+            pygame.draw.circle(screen, (255, 165, 0), self.rect.center, explosion_radius)
+            
+            if self.explosion_timer >= self.explosion_duration:
+                self.is_exploding = False # This will now let 'should_remove' return True
+        else:
+            screen.blit(self.image, self.rect)
+    @property
+    def is_dead(self):
+        """Returns True if the object's health has depleted."""
+        return self.hp <= 0
+    
+    
     def reset_position(self):
-        new_x, new_y, new_x_speed, new_y_speed = get_offscreen_spawn_and_direction(self.rect.width, self.rect.height)
+        new_x, new_y, new_x_speed, new_y_speed = self.random_spawn(self.rect.width, self.rect.height)
         # Update position
         self.rect.center = (new_x, new_y) 
         self.x_speed = new_x_speed
@@ -88,23 +93,46 @@ class GameObject:
             self.rect = self.image.get_rect(center=self.rect.center)
     # Inside game_object.py
 
-def check_collision(circle_pos, circle_radius, rect):
-    # 1. Scale the player's effective hit radius
-    scaled_radius = circle_radius * 0.3
+    def check_collision(self, circle_pos, circle_radius, rect):
+        scaled_radius = circle_radius * 0.5
+        
+        shrink_x = -(rect.width * 0.1)
+        shrink_y = -(rect.height * 0.1)
+        scaled_rect = rect.inflate(shrink_x, shrink_y)
+
+        closest_x = max(scaled_rect.left, min(circle_pos[0], scaled_rect.right))
+        closest_y = max(scaled_rect.top, min(circle_pos[1], scaled_rect.bottom))
+
+        dx = circle_pos[0] - closest_x
+        dy = circle_pos[1] - closest_y
+
+        distance_squared = (dx ** 2) + (dy ** 2)
+        return distance_squared < (scaled_radius ** 2)
     
-    # 2. Scale the object's hitbox
-    shrink_x = -(rect.width * 0.1)
-    shrink_y = -(rect.height * 0.1)
-    scaled_rect = rect.inflate(shrink_x, shrink_y)
+    def random_spawn(self, width, height):
+        direction = random.choice(['left', 'right', 'top', 'bottom'])
+        x, y = 0, 0
+        # Speeds in pixels per second
+        x_speed, y_speed = 0, 0
 
-    # 3. Find the closest point on the scaled rectangle to the circle center
-    closest_x = max(scaled_rect.left, min(circle_pos[0], scaled_rect.right))
-    closest_y = max(scaled_rect.top, min(circle_pos[1], scaled_rect.bottom))
-
-    # 4. Calculate distance
-    dx = circle_pos[0] - closest_x
-    dy = circle_pos[1] - closest_y
-
-    # 5. Collision occurs if distance squared < scaled radius squared
-    distance_squared = (dx ** 2) + (dy ** 2)
-    return distance_squared < (scaled_radius ** 2)
+        if direction == 'left':
+            x = -width
+            y = random.randint(0, globals.SCREEN_HEIGHT - height)
+            x_speed = random.uniform(50, 150) # Speed towards right
+            y_speed = random.uniform(-50, 50) # Vertical drift
+        elif direction == 'right':
+            x = globals.SCREEN_WIDTH
+            y = random.randint(0, globals.SCREEN_HEIGHT - height)
+            x_speed = random.uniform(-150, -50) # Speed towards left
+            y_speed = random.uniform(-50, 50) # Vertical drift
+        elif direction == 'top':
+            x = random.randint(0, globals.SCREEN_WIDTH - width)
+            y = -height
+            x_speed = random.uniform(-50, 50) # Horizontal drift
+            y_speed = random.uniform(50, 150) # Speed downwards
+        elif direction == 'bottom':
+            x = random.randint(0, globals.SCREEN_WIDTH - width)
+            y = globals.SCREEN_HEIGHT
+            x_speed = random.uniform(-50, 50) # Horizontal drift
+            y_speed = random.uniform(-150, -50) # Speed upwards
+        return x, y, x_speed, y_speed

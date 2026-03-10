@@ -3,11 +3,10 @@ import time
 import random
 import globals
 import sys
-
 from enemy import Enemy
 from laser import Laser
-from game_object import GameObject, get_offscreen_spawn_and_direction, check_collision
-from player import player_move
+from game_object import GameObject
+from player import Player
 import assets
 from ui import draw_ui_bar
 from menus import *
@@ -24,7 +23,7 @@ def generate_obstacles(count):
     for _ in range(count):
         img = random.choice(list(assets.meteorite_images.values()))
         width, height = img.get_size()
-        x, y, x_speed, y_speed = get_offscreen_spawn_and_direction(width, height)
+        x, y, x_speed, y_speed = GameObject.random_spawn(None,width, height)
         hp = random.randint(1, 3)
         generated.append(GameObject(x, y, width, height, hp, x_speed, y_speed, image=img))
     return generated
@@ -43,10 +42,10 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
     global obstacles, enemies
     obstacles.clear()
     enemies.clear()
-    globals.player_hp = globals.player_max_hp
-    globals.player_energy = globals.player_max_energy
+    # player.hp = globals.player_max_hp
+    # globals.player_energy = globals.player_max_energy
     game_level = 1
-
+    player = Player()
     clock = pygame.time.Clock()
     player_x, player_y = globals.SCREEN_WIDTH / 2, globals.SCREEN_HEIGHT / 2
     player_radius = 30
@@ -92,11 +91,11 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
             pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, fixed_bar_width * health_percentage, 8))
 
             # Collision with Player
-            if check_collision((player_x, player_y), player_radius, obstacle.rect):
+            if obstacle.check_collision((player_x, player_y), player_radius, obstacle.rect):
                 assets.explosion_sound.play()
                 temp_hp = obstacle.hp
-                obstacle.hp -= globals.player_hp
-                globals.player_hp -= temp_hp
+                obstacle.hp -= player.hp
+                player.hp -= temp_hp
                 # Obstacle is marked for removal automatically next frame because hp <= 0
 
         # --- 2. UPDATE & FILTER ENEMIES ---
@@ -107,20 +106,20 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
             enemy.draw(screen)
             
             # Existing collision check for the enemy body
-            if check_collision((player_x, player_y), player_radius, enemy.rect):
+            if enemy.check_collision((player_x, player_y), player_radius, enemy.rect):
                 assets.explosion_sound.play()
-                if enemy.hp > globals.player_hp:
+                if enemy.hp > player.hp:
                     game_over_result(screen, font, (player_x, player_y))
                     return
-                globals.player_hp -= enemy.hp
+                player.hp -= enemy.hp
                 enemy.hp = 0 
 
             # --- Check collision for each laser fired by this enemy ---
             for laser in enemy.lasers:
-                if laser.active and check_collision((player_x, player_y), player_radius, laser.rect):
+                if laser.active and player.check_collision((player_x, player_y), player_radius, laser.rect):
                     # 1. Apply damage
                     damage_to_apply = laser.damage_per_second * dt
-                    globals.player_hp -= damage_to_apply
+                    player.hp -= damage_to_apply
                     
                     # 2. Play a quieter, shorter version of the explosion sound
                     # We use set_volume (0.0 to 1.0) to make it quieter
@@ -138,27 +137,24 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
                     # 4. Deactivate the laser
                     laser.active = False
 
-        # Update Enemies
-        enemies_to_remove = []
-        for enemy in list(enemies):
+    # --- UPDATE & DRAW ENEMIES ---
+        for enemy in enemies:
             enemy.update(dt, (player_x, player_y), player_radius)
             enemy.draw(screen)
-            if check_collision((player_x, player_y), player_radius, enemy.rect):
-                if enemy.hp > globals.player_hp:
+            
+            if not enemy.is_exploding and enemy.check_collision((player_x, player_y), player_radius, enemy.rect):
+                if enemy.hp > player.hp:
                     game_over_result(screen, font, (player_x, player_y))
                     return
-                globals.player_hp -= enemy.hp
-            if enemy.hp <= 0:
-                enemies_to_remove.append(enemy)
+                enemy.take_damage(enemy.hp)
+                player.hp -= enemy.hp
 
-        for enemy in enemies_to_remove:
-            if enemy in enemies:
-                enemies.remove(enemy)
-                assets.explosion_sound.play()
+        # 4. Clean up the list: Keep only enemies that aren't finished exploding
+        enemies = [en for en in enemies if not en.should_remove]
 
         # Player Movement
         mouse_x, mouse_y = pygame.mouse.get_pos()
-        player_x, player_y, rotation_angle = player_move((player_x, player_y), (mouse_x, mouse_y))
+        player_x, player_y, rotation_angle = player.move((player_x, player_y), (mouse_x, mouse_y))
         rotated_player_image = pygame.transform.rotate(assets.player_image, rotation_angle)
         screen.blit(rotated_player_image, rotated_player_image.get_rect(center=(player_x, player_y)))
 
@@ -167,7 +163,7 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
         if globals.player_energy <= 0:
             game_over_result(screen, font, (player_x, player_y), no_fuel=True)
             return
-        if globals.player_hp <= 0:
+        if player.hp <= 0:
             game_over_result(screen, font, (player_x, player_y))
             return
 
@@ -198,7 +194,7 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
 
         # UI
         draw_ui_bar(screen, 20, 10, globals.player_energy, globals.player_max_energy, assets.energy_bar_img)
-        draw_ui_bar(screen, 20, 80, globals.player_hp, globals.player_max_hp, assets.hp_bar_img)
+        draw_ui_bar(screen, 20, 80, player.hp, globals.player_max_hp, assets.hp_bar_img)
         
         # Stats
         money_txt = font.render(f"Money: {round(globals.money, 2)}", True, (255, 255, 255))

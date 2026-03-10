@@ -3,7 +3,7 @@ import random
 import math
 import time
 import assets
-from game_object import GameObject, get_offscreen_spawn_and_direction
+from game_object import GameObject
 from enemy_laser import EnemyLaser # Explicitly import EnemyLaser
 import globals
 
@@ -13,7 +13,7 @@ import globals
 class Enemy(GameObject):
 
     def __init__(self, level=1):
-        x, y, x_speed_per_sec, y_speed_per_sec = get_offscreen_spawn_and_direction(70, 70)
+        x, y, x_speed_per_sec, y_speed_per_sec = self.random_spawn(70, 70)
     
         base_width = 70
         base_height = 70

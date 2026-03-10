@@ -13,6 +13,8 @@ player_image = None
 logo_background = None
 menu_logo = None
 meteorite_images = None
+enemy_image = None
+enemy_boss_image = None
 
 
 def resource_path(relative_path):
@@ -35,6 +37,9 @@ def load_assets():
     global logo_background
     global menu_logo
     global meteorite_images
+    global enemy_image
+    global enemy_boss_image
+    
     
     # Meteorite images are now defined here, as this is the GameObject base for them
     meteorite_images = {
@@ -56,7 +61,22 @@ def load_assets():
     except pygame.error as e:
         print(f"Music error: {e}")
 
+    # Load enemy image (ensure this path is correct)
+    try:
+        enemy_image = pygame.image.load(resource_path('Images/Ships/ship-6.png'))
+        enemy_image = pygame.transform.scale(enemy_image, (60, 60))
+    except pygame.error:
+        print("Warning: enemy_image (ship-6.png) not found. Using a placeholder.")
+        enemy_image = pygame.Surface((60, 60), pygame.SRCALPHA)
+        pygame.draw.rect(enemy_image, (100, 50, 150), enemy_image.get_rect(), border_radius=5) # Placeholder
 
+    try:
+        enemy_boss_image = pygame.image.load(resource_path('Images/Ships/ship-5.png'))
+        enemy_boss_image = pygame.transform.scale(enemy_boss_image, (120, 120))
+    except pygame.error:
+        print("Warning: enemy_boss_image (enemy_boss.png) not found. Using a placeholder.")
+        enemy_boss_image = pygame.Surface((90, 90), pygame.SRCALPHA)
+        pygame.draw.circle(enemy_boss_image, (150, 50, 100), (45,45), 40) # Placeholder
     # --- EXPLOSIONS ---
     explosion_images = {
         i: pygame.transform.scale(

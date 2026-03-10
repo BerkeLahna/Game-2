@@ -7,22 +7,7 @@ from game_object import GameObject, get_offscreen_spawn_and_direction
 from enemy_laser import EnemyLaser # Explicitly import EnemyLaser
 import globals
 
-# Load enemy image (ensure this path is correct)
-try:
-    enemy_image = pygame.image.load(assets.resource_path('Images/Ships/ship-6.png'))
-    enemy_image = pygame.transform.scale(enemy_image, (60, 60))
-except pygame.error:
-    print("Warning: enemy_image (ship-6.png) not found. Using a placeholder.")
-    enemy_image = pygame.Surface((60, 60), pygame.SRCALPHA)
-    pygame.draw.rect(enemy_image, (100, 50, 150), enemy_image.get_rect(), border_radius=5) # Placeholder
 
-try:
-    enemy_boss_image = pygame.image.load(assets.resource_path('Images/Ships/ship-5.png'))
-    enemy_boss_image = pygame.transform.scale(enemy_boss_image, (120, 120))
-except pygame.error:
-    print("Warning: enemy_boss_image (enemy_boss.png) not found. Using a placeholder.")
-    enemy_boss_image = pygame.Surface((90, 90), pygame.SRCALPHA)
-    pygame.draw.circle(enemy_boss_image, (150, 50, 100), (45,45), 40) # Placeholder
 
 # Enemy Module
 class Enemy(GameObject):
@@ -51,9 +36,9 @@ class Enemy(GameObject):
             height = int(height * 1.5)
             hp = int(hp * 3)
             speed = int(speed * 0.7)
-            current_enemy_image = enemy_boss_image
+            current_enemy_image = assets.enemy_boss_image
         else:
-            current_enemy_image = enemy_image
+            current_enemy_image = assets.enemy_image
 
         scaled_image = pygame.transform.scale(current_enemy_image, (width, height))
 

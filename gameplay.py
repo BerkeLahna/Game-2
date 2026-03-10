@@ -6,7 +6,7 @@ import sys
 
 from enemy import Enemy
 from laser import Laser
-from game_object import GameObject, get_offscreen_spawn_and_direction
+from game_object import GameObject, get_offscreen_spawn_and_direction, check_collision
 from player import player_move
 import assets
 from ui import draw_ui_bar
@@ -35,28 +35,7 @@ def spawn_enemies(level, count):
 
 
 
-def check_collision(circle_pos, circle_radius, rect):
 
-    # 1. Scale the player's effective hit radius
-    scaled_radius = circle_radius * 0.3
-    
-    # 2. Scale the object's (Enemy or Meteor) hitbox
-    # inflate() with negative values shrinks the rectangle toward its center
-    shrink_x = -(rect.width * 0.1)
-    shrink_y = -(rect.height * 0.1)
-    scaled_rect = rect.inflate(shrink_x, shrink_y)
-
-    # 3. Find the closest point on the scaled rectangle to the center of the circle
-    closest_x = max(scaled_rect.left, min(circle_pos[0], scaled_rect.right))
-    closest_y = max(scaled_rect.top, min(circle_pos[1], scaled_rect.bottom))
-
-    # 4. Calculate distance from circle center to this closest point
-    dx = circle_pos[0] - closest_x
-    dy = circle_pos[1] - closest_y
-
-    # 5. Collision occurs if distance squared is less than scaled radius squared
-    distance_squared = (dx ** 2) + (dy ** 2)
-    return distance_squared < (scaled_radius ** 2)
 
 # --- MAIN GAMEPLAY LOOP ---
 

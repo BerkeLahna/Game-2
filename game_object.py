@@ -86,3 +86,25 @@ class GameObject:
             self.image = pygame.transform.rotate(self.original_image, self.angle)
             # Re-center the rect after rotation
             self.rect = self.image.get_rect(center=self.rect.center)
+    # Inside game_object.py
+
+def check_collision(circle_pos, circle_radius, rect):
+    # 1. Scale the player's effective hit radius
+    scaled_radius = circle_radius * 0.3
+    
+    # 2. Scale the object's hitbox
+    shrink_x = -(rect.width * 0.1)
+    shrink_y = -(rect.height * 0.1)
+    scaled_rect = rect.inflate(shrink_x, shrink_y)
+
+    # 3. Find the closest point on the scaled rectangle to the circle center
+    closest_x = max(scaled_rect.left, min(circle_pos[0], scaled_rect.right))
+    closest_y = max(scaled_rect.top, min(circle_pos[1], scaled_rect.bottom))
+
+    # 4. Calculate distance
+    dx = circle_pos[0] - closest_x
+    dy = circle_pos[1] - closest_y
+
+    # 5. Collision occurs if distance squared < scaled radius squared
+    distance_squared = (dx ** 2) + (dy ** 2)
+    return distance_squared < (scaled_radius ** 2)

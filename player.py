@@ -8,13 +8,12 @@ from game_object import GameObject
 
 class Player(GameObject):
     def __init__(self):
-        # Initialize as GameObject (x, y, width, height, hp, x_speed, y_speed, image)
         super().__init__(
             x=globals.SCREEN_WIDTH // 2, 
             y=globals.SCREEN_HEIGHT // 2, 
             width=globals.player_size, 
             height=globals.player_size, 
-            hp=globals.player_max_hp, 
+            hp=1,
             x_speed=0, 
             y_speed=0, 
             image=assets.player_image
@@ -22,6 +21,10 @@ class Player(GameObject):
         self.radius = 30
         self.rotation_angle = 0
         self.current_rotation_angle = 0
+        self.max_energy=5000
+        self.energy=5000
+        self.max_hp=1
+        self.laser_damage = 2
 
     def update(self, dt):
         """Handles both movement and energy depletion."""
@@ -39,7 +42,7 @@ class Player(GameObject):
             self.rotation_angle = math.degrees(math.atan2(-move_y, move_x)) - 90
 
         # 2. Update Energy (Moved from gameplay.py)
-        globals.player_energy -= globals.energy_depletion_rate * dt * 100
+        self.energy -= globals.energy_depletion_rate * dt * 100
 
     def draw(self, screen):
         """Handles rotated rendering."""

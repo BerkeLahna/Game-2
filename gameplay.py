@@ -42,8 +42,7 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
     global obstacles, enemies
     obstacles.clear()
     enemies.clear()
-    # player.hp = globals.player_max_hp
-    # globals.player_energy = globals.player_max_energy
+
     game_level = 1
     player = Player()
     clock = pygame.time.Clock()
@@ -91,12 +90,11 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
             pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, fixed_bar_width * health_percentage, 8))
 
             # Collision with Player
-            if obstacle.check_collision((player_x, player_y), player_radius, obstacle.rect):
+            if player.check_collision((player_x, player_y), player_radius, obstacle.rect):
                 assets.explosion_sound.play()
                 temp_hp = obstacle.hp
                 obstacle.hp -= player.hp
                 player.hp -= temp_hp
-                # Obstacle is marked for removal automatically next frame because hp <= 0
 
         # --- 2. UPDATE & FILTER ENEMIES ---
         enemies = [en for en in enemies if en.hp > 0]
@@ -106,7 +104,7 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
             enemy.draw(screen)
             
             # Existing collision check for the enemy body
-            if enemy.check_collision((player_x, player_y), player_radius, enemy.rect):
+            if player.check_collision((player_x, player_y), player_radius, enemy.rect):
                 assets.explosion_sound.play()
                 if enemy.hp > player.hp:
                     game_over_result(screen, font, (player_x, player_y))
@@ -142,7 +140,7 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
             enemy.update(dt, (player_x, player_y), player_radius)
             enemy.draw(screen)
             
-            if not enemy.is_exploding and enemy.check_collision((player_x, player_y), player_radius, enemy.rect):
+            if not enemy.is_exploding and player.check_collision((player_x, player_y), player_radius, enemy.rect):
                 if enemy.hp > player.hp:
                     game_over_result(screen, font, (player_x, player_y))
                     return
@@ -159,8 +157,8 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
         screen.blit(rotated_player_image, rotated_player_image.get_rect(center=(player_x, player_y)))
 
         # Fuel / Energy
-        globals.player_energy -= globals.energy_depletion_rate * dt * 100
-        if globals.player_energy <= 0:
+        player.energy -= globals.energy_depletion_rate * dt * 100
+        if player.energy <= 0:
             game_over_result(screen, font, (player_x, player_y), no_fuel=True)
             return
         if player.hp <= 0:
@@ -176,7 +174,7 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
             if dist <= globals.player_laser_max_range and dist < min_dist:
                 min_dist, closest_target = dist, target
 
-        if closest_target and globals.player_energy > 0:
+        if closest_target and player.energy > 0:
             if player_laser is None:
                 player_laser = Laser((player_x, player_y), closest_target.rect.center, globals.laser_damage, globals.player_laser_max_range)
             player_laser.active = True
@@ -184,7 +182,7 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
             player_laser.end_pos = pygame.math.Vector2(closest_target.rect.center)
             
             if current_time - gameplay_page.last_player_laser_time > 0.1:
-                globals.player_energy -= 1
+                player.energy -= 1
                 gameplay_page.last_player_laser_time = current_time
             
             player_laser.update(dt, all_targets)
@@ -193,8 +191,8 @@ def gameplay_page(screen, white, font, background_image = assets.background_imag
             player_laser.active = False
 
         # UI
-        draw_ui_bar(screen, 20, 10, globals.player_energy, globals.player_max_energy, assets.energy_bar_img)
-        draw_ui_bar(screen, 20, 80, player.hp, globals.player_max_hp, assets.hp_bar_img)
+        draw_ui_bar(screen, 20, 10, player.energy, player.max_energy, assets.energy_bar_img)
+        draw_ui_bar(screen, 20, 80, player.hp, player.max_hp, assets.hp_bar_img)
         
         # Stats
         money_txt = font.render(f"Money: {round(globals.money, 2)}", True, (255, 255, 255))
